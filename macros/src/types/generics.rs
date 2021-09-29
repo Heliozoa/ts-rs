@@ -36,6 +36,12 @@ pub fn format_type(
         }
     });
 
+    if let Type::Path(path) = ty {
+        if path.path.segments.first().map(|f| f.ident.to_string().contains("DateTime")).unwrap_or_default() {
+            return quote!(String::from("Date"));
+        }
+    }
+
     match extract_type_args(ty) {
         None => quote!(<#ty as ts_rs::TS>::name()),
         Some(type_args) => {
