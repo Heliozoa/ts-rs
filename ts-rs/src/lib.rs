@@ -253,11 +253,11 @@ impl_primitives! {
 #[cfg(feature = "chrono-impl")]
 mod chrono_impls {
     use super::TS;
-    use chrono::{Date, DateTime, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
+    use chrono::{Date, DateTime, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
     use std::any::TypeId;
 
     impl_primitives! {
-        NaiveDateTime, NaiveDate, NaiveTime => "string"
+        NaiveDateTime, NaiveDate, NaiveTime, Utc => "string"
     }
 
     impl<T: TimeZone + 'static> TS for DateTime<T> {
@@ -305,6 +305,11 @@ impl_primitives! {
 #[cfg(feature = "uuid-impl")]
 impl_primitives! {
     uuid::Uuid => "string"
+}
+
+#[cfg(feature = "serde-json-impl")]
+impl_primitives! {
+    serde_json::Value => "unknown"
 }
 
 impl_tuples!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
