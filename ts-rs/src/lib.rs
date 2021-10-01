@@ -312,6 +312,10 @@ impl_primitives! {
     serde_json::Value => "unknown"
 }
 
+impl_primitives! {
+    std::path::Path, std::path::PathBuf => "unknown"
+}
+
 impl_tuples!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
 impl_proxy!(impl<T: TS> TS for Box<T>);
 impl_proxy!(impl<T: TS> TS for std::sync::Arc<T>);
