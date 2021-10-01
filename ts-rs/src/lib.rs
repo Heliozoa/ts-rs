@@ -257,16 +257,16 @@ mod chrono_impls {
     use std::any::TypeId;
 
     impl_primitives! {
-        NaiveDateTime, NaiveDate, NaiveTime, Utc => "string"
+        NaiveDateTime, NaiveDate, NaiveTime, Utc => "Date"
     }
 
     impl<T: TimeZone + 'static> TS for DateTime<T> {
         fn name() -> String {
-            "string".to_owned()
+            "Date".to_owned()
         }
 
         fn inline(_indent: usize) -> String {
-            "string".to_owned()
+            "Date".to_owned()
         }
 
         fn dependencies() -> Vec<(TypeId, String)> {
@@ -280,11 +280,11 @@ mod chrono_impls {
 
     impl<T: TimeZone + 'static> TS for Date<T> {
         fn name() -> String {
-            "string".to_owned()
+            "Date".to_owned()
         }
 
         fn inline(_indent: usize) -> String {
-            "string".to_owned()
+            "Date".to_owned()
         }
 
         fn dependencies() -> Vec<(TypeId, String)> {
