@@ -2,11 +2,9 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{GenericArgument, GenericParam, Generics, PathArguments, Type};
 
-pub fn format_type(
-    ty: &Type,
-    dependencies: &mut Vec<TokenStream>,
-    generics: &Generics,
-) -> TokenStream {
+use crate::deps::Dependencies;
+
+pub fn format_type(ty: &Type, dependencies: &mut Dependencies, generics: &Generics) -> TokenStream {
     // If the type matches one of the generic parameters, just pass the identifier:
     if let Some(generic_ident) = generics
         .params
@@ -28,13 +26,7 @@ pub fn format_type(
         return quote!(#generic_ident.to_owned());
     }
 
-    dependencies.push(quote! {
-        if <#ty as ts_rs::TS>::transparent() {
-            dependencies.append(&mut <#ty as ts_rs::TS>::dependencies());
-        } else {
-            dependencies.push((std::any::TypeId::of::<#ty>(), <#ty as ts_rs::TS>::name()));
-        }
-    });
+    dependencies.push_or_append_from(ty);
 
     if let Type::Path(path) = ty {
         if path.path.segments.first().map(|f| f.ident.to_string().contains("DateTime")).unwrap_or_default() {

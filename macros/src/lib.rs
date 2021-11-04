@@ -5,9 +5,12 @@ use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use syn::{parse_quote, spanned::Spanned, GenericParam, Generics, Item, Result, WhereClause};
 
+use crate::deps::Dependencies;
+
 #[macro_use]
 mod utils;
 mod attr;
+mod deps;
 mod types;
 
 struct DerivedTS {
@@ -15,7 +18,7 @@ struct DerivedTS {
     inline: TokenStream,
     decl: TokenStream,
     inline_flattened: Option<TokenStream>,
-    dependencies: TokenStream,
+    dependencies: Dependencies,
 }
 
 impl DerivedTS {
@@ -31,7 +34,7 @@ impl DerivedTS {
         let inline_flattened = inline_flattened
             .map(|t| {
                 quote! {
-                    fn inline_flattened(indent: usize) -> String {
+                    fn inline_flattened() -> String {
                         #t
                     }
                 }
@@ -48,14 +51,14 @@ impl DerivedTS {
         let where_clause = add_ts_trait_bound(&generics);
 
         quote! {
-            impl#lt_token#params#gt_token ts_rs::TS for #rust_ty#lt_token#params#gt_token#where_clause {
+            impl #lt_token #params #gt_token ts_rs::TS for #rust_ty #lt_token #params #gt_token #where_clause {
                 fn decl() -> String {
                     #decl
                 }
                 fn name() -> String {
                     #name.to_owned()
                 }
-                fn inline(indent: usize) -> String {
+                fn inline() -> String {
                     #inline
                 }
                 #inline_flattened

@@ -124,13 +124,13 @@ pub trait TS: 'static {
 
     /// Formats this types definition in TypeScript, e.g `{ user_id: number }`.
     /// This function will panic if the type cannot be inlined.
-    fn inline(#[allow(unused_variables)] indent: usize) -> String {
+    fn inline() -> String {
         panic!("{} cannot be inlined", Self::name());
     }
 
     /// Flatten an type declaration.  
     /// This function will panic if the type cannot be flattened.
-    fn inline_flattened(#[allow(unused_variables)] indent: usize) -> String {
+    fn inline_flattened() -> String {
         panic!("{} cannot be flattened", Self::name())
     }
 
@@ -168,7 +168,7 @@ macro_rules! impl_primitives {
             fn name() -> String {
                 $l.to_owned()
             }
-            fn inline(_: usize) -> String {
+            fn inline() -> String {
                 $l.to_owned()
             }
             fn dependencies() -> Vec<(TypeId, String)> {
@@ -190,11 +190,11 @@ macro_rules! impl_tuples {
                     vec![$($i::name()),*].join(", ")
                 )
             }
-            fn inline(indent: usize) -> String {
+            fn inline() -> String {
                 format!(
                     "[{}]",
                     vec![
-                        $($i::inline(indent)),*
+                        $($i::inline()),*
                     ].join(", ")
                 )
             }
@@ -226,11 +226,11 @@ macro_rules! impl_proxy {
                     format!("[{}]", args.join(", "))
                 }
             }
-            fn inline(indent: usize) -> String {
-                T::inline(indent)
+            fn inline() -> String {
+                T::inline()
             }
-            fn inline_flattened(indent: usize) -> String {
-                T::inline_flattened(indent)
+            fn inline_flattened() -> String {
+                T::inline_flattened()
             }
             fn dependencies() -> Vec<(TypeId, String)> {
                 T::dependencies()
@@ -243,18 +243,63 @@ macro_rules! impl_proxy {
 }
 
 impl_primitives! {
-    u8, i8, u16, i16, u32, i32, u64, i64, f32, f64, usize, isize => "number",
-    u128, i128 => "bigint",
+    u8, i8, u16, i16, u32, i32, f32, f64, usize, isize => "number",
+    u64, i64, u128, i128 => "bigint",
     bool => "boolean",
     String, &'static str => "string",
     () => "null"
 }
 
+#[cfg(feature = "bytes-impl")]
+mod bytes {
+    use std::any::TypeId;
+
+    use super::TS;
+
+    impl TS for bytes::Bytes {
+        fn name() -> String {
+            "Array<number>".to_owned()
+        }
+
+        fn inline() -> String {
+            format!("Array<{}>", u8::inline())
+        }
+
+        fn dependencies() -> Vec<(TypeId, String)> {
+            vec![(TypeId::of::<u8>(), u8::name())]
+        }
+
+        fn transparent() -> bool {
+            true
+        }
+    }
+
+    impl TS for bytes::BytesMut {
+        fn name() -> String {
+            "Array<number>".to_owned()
+        }
+
+        fn inline() -> String {
+            format!("Array<{}>", u8::inline())
+        }
+
+        fn dependencies() -> Vec<(TypeId, String)> {
+            vec![(TypeId::of::<u8>(), u8::name())]
+        }
+
+        fn transparent() -> bool {
+            true
+        }
+    }
+}
+
 #[cfg(feature = "chrono-impl")]
 mod chrono_impls {
-    use super::TS;
-    use chrono::{Date, DateTime, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
     use std::any::TypeId;
+
+    use chrono::{Date, DateTime, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+
+    use super::TS;
 
     impl_primitives! {
         NaiveDateTime, NaiveDate, NaiveTime, Utc => "Date"
@@ -285,10 +330,6 @@ mod chrono_impls {
 
         fn inline(_indent: usize) -> String {
             "Date".to_owned()
-        }
-
-        fn dependencies() -> Vec<(TypeId, String)> {
-            vec![]
         }
 
         fn transparent() -> bool {
@@ -326,15 +367,16 @@ impl_proxy!(impl<T: TS> TS for std::cell::RefCell<T>);
 
 impl<T: TS> TS for Option<T> {
     fn name() -> String {
-        format!("{} | null", T::name())
+        unreachable!();
     }
 
-    fn name_with_type_args(_: Vec<String>) -> String {
-        Self::name()
+    fn name_with_type_args(args: Vec<String>) -> String {
+        assert_eq!(args.len(), 1);
+        format!("{} | null", args[0])
     }
 
-    fn inline(indent: usize) -> String {
-        format!("{} | null", T::inline(indent))
+    fn inline() -> String {
+        format!("{} | null", T::inline())
     }
 
     fn dependencies() -> Vec<(TypeId, String)> {
@@ -351,8 +393,13 @@ impl<T: TS> TS for Vec<T> {
         "Array".to_owned()
     }
 
-    fn inline(indent: usize) -> String {
-        format!("Array<{}>", T::inline(indent))
+    fn name_with_type_args(args: Vec<String>) -> String {
+        assert_eq!(args.len(), 1);
+        format!("Array<{}>", args[0])
+    }
+
+    fn inline() -> String {
+        format!("Array<{}>", T::inline())
     }
 
     fn dependencies() -> Vec<(TypeId, String)> {
@@ -369,8 +416,8 @@ impl<T: TS> TS for HashSet<T> {
         "Array".to_owned()
     }
 
-    fn inline(indent: usize) -> String {
-        format!("Array<{}>", T::inline(indent))
+    fn inline() -> String {
+        format!("Array<{}>", T::inline())
     }
 
     fn dependencies() -> Vec<(TypeId, String)> {
@@ -387,8 +434,8 @@ impl<T: TS> TS for BTreeSet<T> {
         "Array".to_owned()
     }
 
-    fn inline(indent: usize) -> String {
-        format!("Array<{}>", T::inline(indent))
+    fn inline() -> String {
+        format!("Array<{}>", T::inline())
     }
 
     fn dependencies() -> Vec<(TypeId, String)> {
@@ -405,8 +452,8 @@ impl<K: TS, V: TS> TS for HashMap<K, V> {
         "Record".to_owned()
     }
 
-    fn inline(indent: usize) -> String {
-        format!("Record<{}, {}>", K::inline(indent), V::inline(indent))
+    fn inline() -> String {
+        format!("Record<{}, {}>", K::inline(), V::inline())
     }
 
     fn dependencies() -> Vec<(TypeId, String)> {
@@ -426,8 +473,8 @@ impl<K: TS, V: TS> TS for BTreeMap<K, V> {
         "Record".to_owned()
     }
 
-    fn inline(indent: usize) -> String {
-        format!("Record<{}, {}>", K::inline(indent), V::inline(indent))
+    fn inline() -> String {
+        format!("Record<{}, {}>", K::inline(), V::inline())
     }
 
     fn dependencies() -> Vec<(TypeId, String)> {
@@ -435,6 +482,24 @@ impl<K: TS, V: TS> TS for BTreeMap<K, V> {
             (TypeId::of::<K>(), K::name()),
             (TypeId::of::<V>(), V::name()),
         ]
+    }
+
+    fn transparent() -> bool {
+        true
+    }
+}
+
+impl<T: TS, const N: usize> TS for [T; N] {
+    fn name() -> String {
+        format!("Array<{}>", T::name())
+    }
+
+    fn inline() -> String {
+        format!("Array<{}>", T::inline())
+    }
+
+    fn dependencies() -> Vec<(TypeId, String)> {
+        vec![(TypeId::of::<T>(), T::name())]
     }
 
     fn transparent() -> bool {

@@ -4,6 +4,7 @@ use syn::{Fields, Generics, ItemEnum, ItemStruct, Result, Variant};
 
 use crate::{
     attr::{EnumAttr, FieldAttr, Inflection, StructAttr},
+    deps::Dependencies,
     types::generics::format_type,
     utils::to_ts_ident,
     DerivedTS,
@@ -29,11 +30,15 @@ fn type_def(
     generics: &Generics,
 ) -> Result<DerivedTS> {
     match fields {
-        Fields::Named(named) => named::named(name, rename_all, named, generics),
-        Fields::Unnamed(unnamed) if unnamed.unnamed.len() == 1 => {
-            newtype::newtype(name, rename_all, unnamed)
-        }
-        Fields::Unnamed(unnamed) => tuple::tuple(name, rename_all, unnamed),
+        Fields::Named(named) => match named.named.len() {
+            0 => unit::unit(name, rename_all),
+            _ => named::named(name, rename_all, named, generics),
+        },
+        Fields::Unnamed(unnamed) => match unnamed.unnamed.len() {
+            0 => unit::unit(name, rename_all),
+            1 => newtype::newtype(name, rename_all, unnamed, generics),
+            _ => tuple::tuple(name, rename_all, unnamed, generics),
+        },
         Fields::Unit => unit::unit(name, rename_all),
     }
 }
@@ -47,7 +52,7 @@ pub(crate) fn r#enum(s: &ItemEnum) -> Result<DerivedTS> {
     };
 
     let mut formatted_variants = vec![];
-    let mut dependencies = vec![];
+    let mut dependencies = Dependencies::default();
     for variant in &s.variants {
         format_variant(
             &mut formatted_variants,
@@ -59,20 +64,16 @@ pub(crate) fn r#enum(s: &ItemEnum) -> Result<DerivedTS> {
 
     Ok(DerivedTS {
         inline: quote!(vec![#(#formatted_variants),*].join(" | ")),
-        decl: quote!(format!("type {} = {};", #name, Self::inline(0))),
+        decl: quote!(format!("type {} = {};", #name, Self::inline())),
         inline_flattened: None,
-        dependencies: quote! {
-            let mut dependencies = vec![];
-            #( #dependencies )*
-            dependencies
-        },
+        dependencies,
         name,
     })
 }
 
 fn format_variant(
     formatted_variants: &mut Vec<TokenStream>,
-    dependencies: &mut Vec<TokenStream>,
+    dependencies: &mut Dependencies,
     enum_attr: &EnumAttr,
     variant: &Variant,
 ) -> Result<()> {
@@ -140,8 +141,7 @@ fn format_variant(
                         }
                         Fields::Unit => quote!(format!("{{ {}: \"{}\" }}", #tag, #name)),
                         _ => {
-                            dependencies
-                                .push(quote!(dependencies.append(&mut #variant_dependencies);));
+                            dependencies.append(variant_dependencies);
                             quote!(format!("{{ {}: \"{}\" }} & {}", #tag, #name, #inline_type))
                         }
                     },

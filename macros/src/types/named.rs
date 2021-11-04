@@ -6,6 +6,7 @@ use syn::{
 
 use crate::{
     attr::{FieldAttr, Inflection},
+    deps::Dependencies,
     types::generics::format_type,
     utils::to_ts_ident,
     DerivedTS,
@@ -18,7 +19,7 @@ pub(crate) fn named(
     generics: &Generics,
 ) -> Result<DerivedTS> {
     let mut formatted_fields = vec![];
-    let mut dependencies = vec![];
+    let mut dependencies = Dependencies::default();
     for field in &fields.named {
         format_field(
             &mut formatted_fields,
@@ -29,7 +30,7 @@ pub(crate) fn named(
         )?;
     }
 
-    let fields = quote!(vec![#(#formatted_fields),*].join("\n"));
+    let fields = quote!(vec![#(#formatted_fields),*].join(" "));
     let generic_args = match &generics.params {
         params if !params.is_empty() => {
             let expanded_params = params
@@ -48,26 +49,21 @@ pub(crate) fn named(
     Ok(DerivedTS {
         inline: quote! {
             format!(
-                "{{\n{}\n{}}}",
+                "{{ {} }}",
                 #fields,
-                " ".repeat(indent * 4)
             )
         },
-        decl: quote!(format!("interface {}{} {}", #name, #generic_args, Self::inline(0))),
+        decl: quote!(format!("interface {}{} {}", #name, #generic_args, Self::inline())),
         inline_flattened: Some(fields),
         name: name.to_owned(),
-        dependencies: quote! {
-            let mut dependencies = vec![];
-            #( #dependencies )*
-            dependencies
-        },
+        dependencies,
     })
 }
 
 // build an expresion which expands to a string, representing a single field of a struct.
 fn format_field(
     formatted_fields: &mut Vec<TokenStream>,
-    dependencies: &mut Vec<TokenStream>,
+    dependencies: &mut Dependencies,
     field: &Field,
     rename_all: &Option<Inflection>,
     generics: &Generics,
@@ -98,16 +94,15 @@ fn format_field(
             _ => {}
         }
 
-        formatted_fields.push(quote!(<#ty as ts_rs::TS>::inline_flattened(indent)));
-        dependencies.push(quote!(dependencies.append(&mut <#ty as ts_rs::TS>::dependencies());));
+        formatted_fields.push(quote!(<#ty as ts_rs::TS>::inline_flattened()));
+        dependencies.append_from(ty);
         return Ok(());
     }
 
     let formatted_ty = type_override.map(|t| quote!(#t)).unwrap_or_else(|| {
         if inline {
-            dependencies
-                .push(quote!(dependencies.append(&mut <#ty as ts_rs::TS>::dependencies());));
-            quote!(<#ty as ts_rs::TS>::inline(indent + 1))
+            dependencies.append_from(ty);
+            quote!(<#ty as ts_rs::TS>::inline())
         } else {
             format_type(ty, dependencies, generics)
         }
@@ -120,7 +115,7 @@ fn format_field(
     };
 
     formatted_fields.push(quote! {
-        format!("{}{}{}: {},", " ".repeat((indent + 1) * 4), #name, #optional_annotation, #formatted_ty)
+        format!("{}{}: {},", #name, #optional_annotation, #formatted_ty)
     });
 
     Ok(())
