@@ -310,7 +310,7 @@ mod chrono_impls {
             "Date".to_owned()
         }
 
-        fn inline(_indent: usize) -> String {
+        fn inline() -> String {
             "Date".to_owned()
         }
 
@@ -328,8 +328,12 @@ mod chrono_impls {
             "Date".to_owned()
         }
 
-        fn inline(_indent: usize) -> String {
+        fn inline() -> String {
             "Date".to_owned()
+        }
+
+        fn dependencies() -> Vec<(TypeId, String)> {
+            vec![]
         }
 
         fn transparent() -> bool {
