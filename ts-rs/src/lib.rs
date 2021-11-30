@@ -458,14 +458,6 @@ impl_primitives! {
     std::path::Path, std::path::PathBuf => "unknown"
 }
 
-impl_tuples!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
-impl_proxy!(impl<T: TS> TS for Box<T>);
-impl_proxy!(impl<T: TS> TS for std::sync::Arc<T>);
-impl_proxy!(impl<T: TS> TS for std::rc::Rc<T>);
-impl_proxy!(impl<T: TS + ToOwned> TS for std::borrow::Cow<'static, T>);
-impl_proxy!(impl<T: TS> TS for std::cell::Cell<T>);
-impl_proxy!(impl<T: TS> TS for std::cell::RefCell<T>);
-
 // implement TS for the $shadow, deferring to the impl $s
 macro_rules! impl_shadow {
     (as $s:ty: $($impl:tt)*) => {
@@ -584,21 +576,10 @@ impl_tuples!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
 #[cfg(feature = "bigdecimal-impl")]
 impl_primitives! { bigdecimal::BigDecimal => "string" }
 
-#[cfg(feature = "uuid-impl")]
-impl_primitives! { uuid::Uuid => "string" }
-
 #[cfg(feature = "bytes-impl")]
 mod bytes {
     use super::TS;
 
     impl_shadow!(as Vec<u8>: impl TS for bytes::Bytes);
     impl_shadow!(as Vec<u8>: impl TS for bytes::BytesMut);
-}
-
-impl_primitives! {
-    u8, i8, u16, i16, u32, i32, f32, f64, usize, isize => "number",
-    u64, i64, u128, i128 => "bigint",
-    bool => "boolean",
-    String, &'static str => "string",
-    () => "null"
 }
