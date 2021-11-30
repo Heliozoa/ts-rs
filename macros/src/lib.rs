@@ -2,8 +2,11 @@
 #![deny(unused)]
 
 use proc_macro2::{Ident, TokenStream};
-use quote::quote;
-use syn::{parse_quote, spanned::Spanned, GenericParam, Generics, Item, Result, WhereClause};
+use quote::{format_ident, quote};
+use syn::{
+    parse_quote, spanned::Spanned, ConstParam, GenericParam, Generics, Item, LifetimeDef, Result,
+    TypeParam, WhereClause,
+};
 
 use crate::deps::Dependencies;
 
@@ -19,10 +22,40 @@ struct DerivedTS {
     decl: TokenStream,
     inline_flattened: Option<TokenStream>,
     dependencies: Dependencies,
+
+    export: bool,
+    export_to: Option<String>,
 }
 
 impl DerivedTS {
+    fn generate_export_test(&self, rust_ty: &Ident, generics: &Generics) -> Option<TokenStream> {
+        let test_fn = format_ident!("export_bindings_{}", &self.name.to_lowercase());
+        let generic_params = generics
+            .params
+            .iter()
+            .filter(|param| matches!(param, GenericParam::Type(_)))
+            .map(|_| quote! { () });
+        let ty = quote!(<#rust_ty<#(#generic_params),*> as ts_rs::TS>);
+
+        Some(quote! {
+            #[cfg(test)]
+            #[test]
+            fn #test_fn() {
+                #ty::export().expect("could not export type");
+            }
+        })
+    }
+
     fn into_impl(self, rust_ty: Ident, generics: Generics) -> TokenStream {
+        let export_to = self
+            .export_to
+            .clone()
+            .unwrap_or_else(|| format!("bindings/{}.ts", self.name));
+        let export = match self.export {
+            true => Some(self.generate_export_test(&rust_ty, &generics)),
+            false => None,
+        };
+
         let DerivedTS {
             name,
             inline,
@@ -41,17 +74,11 @@ impl DerivedTS {
             })
             .unwrap_or_else(TokenStream::new);
 
-        let Generics {
-            ref lt_token,
-            ref params,
-            ref gt_token,
-            where_clause: _,
-        } = generics;
-
-        let where_clause = add_ts_trait_bound(&generics);
-
+        let impl_start = generate_impl(&rust_ty, &generics);
         quote! {
-            impl #lt_token #params #gt_token ts_rs::TS for #rust_ty #lt_token #params #gt_token #where_clause {
+            #impl_start {
+                const EXPORT_TO: Option<&'static str> = Some(#export_to);
+
                 fn decl() -> String {
                     #decl
                 }
@@ -62,26 +89,62 @@ impl DerivedTS {
                     #inline
                 }
                 #inline_flattened
-                fn dependencies() -> Vec<(std::any::TypeId, String)> {
+                fn dependencies() -> Vec<ts_rs::Dependency> {
                     #dependencies
                 }
                 fn transparent() -> bool {
                     false
                 }
             }
+
+            #export
         }
     }
 }
 
-fn add_ts_trait_bound(generics: &Generics) -> Option<WhereClause> {
-    let generic_types: Vec<_> = generics
+// generate start of the `impl TS for #ty` block, up to (excluding) the open brace
+fn generate_impl(ty: &Ident, generics: &Generics) -> TokenStream {
+    use GenericParam::*;
+
+    let bounds = generics.params.iter().map(|param| match param {
+        Type(TypeParam {
+            ident,
+            colon_token,
+            bounds,
+            ..
+        }) => quote!(#ident #colon_token #bounds),
+        Lifetime(LifetimeDef {
+            lifetime,
+            colon_token,
+            bounds,
+            ..
+        }) => quote!(#lifetime #colon_token #bounds),
+        Const(ConstParam {
+            const_token,
+            ident,
+            colon_token,
+            ty,
+            ..
+        }) => quote!(#const_token #ident #colon_token #ty),
+    });
+    let type_args = generics.params.iter().map(|param| match param {
+        Type(TypeParam { ident, .. }) | Const(ConstParam { ident, .. }) => quote!(#ident),
+        Lifetime(LifetimeDef { lifetime, .. }) => quote!(#lifetime),
+    });
+
+    let where_bound = add_ts_to_where_clause(generics);
+    quote!(impl <#(#bounds),*> ts_rs::TS for #ty <#(#type_args),*> #where_bound)
+}
+
+fn add_ts_to_where_clause(generics: &Generics) -> Option<WhereClause> {
+    let generic_types = generics
         .params
         .iter()
         .filter_map(|gp| match gp {
             GenericParam::Type(ty) => Some(ty.ident.clone()),
             _ => None,
         })
-        .collect();
+        .collect::<Vec<_>>();
     if generic_types.is_empty() {
         return generics.where_clause.clone();
     }
@@ -109,7 +172,7 @@ fn entry(input: proc_macro::TokenStream) -> Result<TokenStream> {
     let input = syn::parse::<Item>(input)?;
     let (ts, ident, generics) = match input {
         Item::Struct(s) => (types::struct_def(&s)?, s.ident, s.generics),
-        Item::Enum(e) => (types::r#enum(&e)?, e.ident, e.generics),
+        Item::Enum(e) => (types::enum_def(&e)?, e.ident, e.generics),
         _ => syn_err!(input.span(); "unsupported item"),
     };
 
