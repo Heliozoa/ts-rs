@@ -337,125 +337,6 @@ macro_rules! impl_wrapper {
     };
 }
 
-impl_primitives! {
-    u8, i8, u16, i16, u32, i32, f32, f64, usize, isize => "number",
-    u64, i64, u128, i128 => "bigint",
-    bool => "boolean",
-    String, &'static str => "string",
-    () => "null"
-}
-
-#[cfg(feature = "bytes-impl")]
-mod bytes {
-    use std::any::TypeId;
-
-    use super::TS;
-
-    impl TS for bytes::Bytes {
-        fn name() -> String {
-            "Array<number>".to_owned()
-        }
-
-        fn inline() -> String {
-            format!("Array<{}>", u8::inline())
-        }
-
-        fn dependencies() -> Vec<(TypeId, String)> {
-            vec![(TypeId::of::<u8>(), u8::name())]
-        }
-
-        fn transparent() -> bool {
-            true
-        }
-    }
-
-    impl TS for bytes::BytesMut {
-        fn name() -> String {
-            "Array<number>".to_owned()
-        }
-
-        fn inline() -> String {
-            format!("Array<{}>", u8::inline())
-        }
-
-        fn dependencies() -> Vec<(TypeId, String)> {
-            vec![(TypeId::of::<u8>(), u8::name())]
-        }
-
-        fn transparent() -> bool {
-            true
-        }
-    }
-}
-
-#[cfg(feature = "chrono-impl")]
-mod chrono_impls {
-    use std::any::TypeId;
-
-    use chrono::{Date, DateTime, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
-
-    use super::TS;
-
-    impl_primitives! {
-        NaiveDateTime, NaiveDate, NaiveTime, Utc => "Date"
-    }
-
-    impl<T: TimeZone + 'static> TS for DateTime<T> {
-        fn name() -> String {
-            "Date".to_owned()
-        }
-
-        fn inline() -> String {
-            "Date".to_owned()
-        }
-
-        fn dependencies() -> Vec<(TypeId, String)> {
-            vec![]
-        }
-
-        fn transparent() -> bool {
-            false
-        }
-    }
-
-    impl<T: TimeZone + 'static> TS for Date<T> {
-        fn name() -> String {
-            "Date".to_owned()
-        }
-
-        fn inline() -> String {
-            "Date".to_owned()
-        }
-
-        fn dependencies() -> Vec<(TypeId, String)> {
-            vec![]
-        }
-
-        fn transparent() -> bool {
-            false
-        }
-    }
-}
-
-#[cfg(feature = "bigdecimal-impl")]
-impl_primitives! {
-    bigdecimal::BigDecimal => "string"
-}
-
-#[cfg(feature = "uuid-impl")]
-impl_primitives! {
-    uuid::Uuid => "string"
-}
-
-#[cfg(feature = "serde-json-impl")]
-impl_primitives! {
-    serde_json::Value => "unknown"
-}
-
-impl_primitives! {
-    std::path::Path, std::path::PathBuf => "unknown"
-}
-
 // implement TS for the $shadow, deferring to the impl $s
 macro_rules! impl_shadow {
     (as $s:ty: $($impl:tt)*) => {
@@ -574,10 +455,118 @@ impl_tuples!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
 #[cfg(feature = "bigdecimal-impl")]
 impl_primitives! { bigdecimal::BigDecimal => "string" }
 
+#[cfg(feature = "uuid-impl")]
+impl_primitives! { uuid::Uuid => "string" }
+
 #[cfg(feature = "bytes-impl")]
 mod bytes {
     use super::TS;
 
     impl_shadow!(as Vec<u8>: impl TS for bytes::Bytes);
     impl_shadow!(as Vec<u8>: impl TS for bytes::BytesMut);
+}
+
+impl_primitives! {
+    u8, i8, u16, i16, u32, i32, f32, f64, usize, isize => "number",
+    u64, i64, u128, i128 => "bigint",
+    bool => "boolean",
+    String, &'static str => "string",
+    () => "null"
+}
+
+#[cfg(feature = "serde-json-impl")]
+impl_primitives! {
+    serde_json::Value => "unknown"
+}
+
+impl_primitives! {
+    std::path::Path, std::path::PathBuf => "unknown"
+}
+
+#[cfg(feature = "chrono-impl")]
+mod chrono_impls {
+    use chrono::{
+        Date, DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime,
+        TimeZone, Utc,
+    };
+
+    use super::TS;
+    use crate::Dependency;
+
+    impl_primitives! {
+        NaiveDateTime, NaiveDate, NaiveTime, Utc => "Date",
+        Duration => "string"
+    }
+
+    impl<T: TimeZone + 'static> TS for DateTime<T> {
+        fn name() -> String {
+            "Date".to_owned()
+        }
+
+        fn inline() -> String {
+            "Date".to_owned()
+        }
+
+        fn dependencies() -> Vec<Dependency> {
+            vec![]
+        }
+
+        fn transparent() -> bool {
+            false
+        }
+    }
+
+    impl<T: TimeZone + 'static> TS for Date<T> {
+        fn name() -> String {
+            "Date".to_owned()
+        }
+
+        fn inline() -> String {
+            "Date".to_owned()
+        }
+
+        fn dependencies() -> Vec<Dependency> {
+            vec![]
+        }
+
+        fn transparent() -> bool {
+            false
+        }
+    }
+
+    impl TS for Local {
+        fn name() -> String {
+            unimplemented!()
+        }
+
+        fn inline() -> String {
+            unimplemented!()
+        }
+
+        fn dependencies() -> Vec<Dependency> {
+            unimplemented!()
+        }
+
+        fn transparent() -> bool {
+            unimplemented!()
+        }
+    }
+
+    impl TS for FixedOffset {
+        fn name() -> String {
+            unimplemented!()
+        }
+
+        fn inline() -> String {
+            unimplemented!()
+        }
+
+        fn dependencies() -> Vec<Dependency> {
+            unimplemented!()
+        }
+
+        fn transparent() -> bool {
+            unimplemented!()
+        }
+    }
 }
