@@ -118,8 +118,6 @@ pub use ts_rs_macros::TS;
 
 pub use crate::export::ExportError;
 
-#[cfg(feature = "chrono-impl")]
-mod chrono;
 mod export;
 
 /// A type which can be represented in TypeScript.  
