@@ -645,10 +645,9 @@ macro_rules! export_to {
             let target = $target;
             fn _export(target: &mut impl ::std::io::Write) -> ::std::result::Result<(), ::std::io::Error> {
                 $(
-                    #[cfg(feature = "ts_rs")]
                     writeln!(target, "export {}\n", <$types as ::ts_rs::TS>::decl())?;
                 )*
-                Ok(())
+                ::std::result::Result::Ok(())
             }
             _export(target)
         }
