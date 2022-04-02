@@ -17,6 +17,9 @@ pub(crate) fn newtype(
     if attr.rename_all.is_some() {
         syn_err!("`rename_all` is not applicable to newtype structs");
     }
+    if attr.tag.is_some() {
+        syn_err!("`tag` is not applicable to newtype structs");
+    }
     let inner = fields.unnamed.first().unwrap();
     let FieldAttr {
         type_override,
@@ -43,7 +46,7 @@ pub(crate) fn newtype(
         (false, _) => dependencies.push_or_append_from(inner_ty),
     };
     let inline_def = match &type_override {
-        Some(o) => quote!(#o),
+        Some(o) => quote!(#o.to_owned()),
         None if inline => quote!(<#inner_ty as ts_rs::TS>::inline()),
         None => format_type(inner_ty, &mut dependencies, generics),
     };

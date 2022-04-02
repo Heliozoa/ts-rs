@@ -40,7 +40,7 @@
 //! ## get started
 //! ```toml
 //! [dependencies]
-//! ts-rs = "6.0"
+//! ts-rs = "6.1"
 //! ```
 //!
 //! ```rust
@@ -67,15 +67,27 @@
 //!
 //! ## cargo features
 //! - `serde-compat` (default)  
+//!
 //!   Enable serde compatibility. See below for more info.  
+//! - `format` (default)  
+//!
+//!   When enabled, the generated typescript will be formatted.
+//!   Currently, this sadly adds quite a bit of dependencies.
 //! - `chrono-impl`  
+//!
 //!   Implement `TS` for types from chrono  
 //! - `bigdecimal-impl`  
+//!
 //!   Implement `TS` for types from bigdecimal  
 //! - `uuid-impl`  
+//!
 //!   Implement `TS` for types from uuid  
 //! - `bytes-impl`  
-//!   Implement `TS` for types from bytes  
+//!
+//!   Implement `TS` for types from bytes    
+//! - `indexmap-impl`  
+//!
+//!   Implement `TS` for `IndexMap` and `IndexSet` from indexmap  
 //!
 //! If there's a type you're dealing with which doesn't implement `TS`, use `#[ts(type = "..")]` or open a PR.
 //!
@@ -112,6 +124,8 @@
 use std::{
     any::TypeId,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    ops::{Range, RangeInclusive},
+    path::{Path, PathBuf},
 };
 
 pub use ts_rs_macros::TS;
@@ -269,10 +283,11 @@ impl Dependency {
     /// If `T` is not exportable (meaning `T::EXPORT_TO` is `None`), this function will return
     /// `None`
     pub fn from_ty<T: TS>() -> Option<Self> {
+        let exported_to = T::EXPORT_TO?;
         Some(Dependency {
             type_id: TypeId::of::<T>(),
             ts_name: T::name(),
-            exported_to: T::EXPORT_TO?,
+            exported_to,
         })
     }
 }
@@ -292,7 +307,6 @@ macro_rules! impl_primitives {
         }
     )*)* };
 }
-pub(crate) use impl_primitives;
 
 // generate impls for tuples
 macro_rules! impl_tuples {
@@ -438,6 +452,54 @@ impl<K: TS, V: TS> TS for HashMap<K, V> {
     }
 }
 
+impl<I: TS> TS for Range<I> {
+    fn name() -> String {
+        panic!("called Range::name - Did you use a type alias?")
+    }
+
+    fn name_with_type_args(args: Vec<String>) -> String {
+        assert_eq!(
+            args.len(),
+            1,
+            "called Range::name_with_type_args with {} args",
+            args.len()
+        );
+        format!("{{ start: {}, end: {}, }}", &args[0], &args[0])
+    }
+
+    fn dependencies() -> Vec<Dependency> {
+        [Dependency::from_ty::<I>()].into_iter().flatten().collect()
+    }
+
+    fn transparent() -> bool {
+        true
+    }
+}
+
+impl<I: TS> TS for RangeInclusive<I> {
+    fn name() -> String {
+        panic!("called RangeInclusive::name - Did you use a type alias?")
+    }
+
+    fn name_with_type_args(args: Vec<String>) -> String {
+        assert_eq!(
+            args.len(),
+            1,
+            "called RangeInclusive::name_with_type_args with {} args",
+            args.len()
+        );
+        format!("{{ start: {}, end: {}, }}", &args[0], &args[0])
+    }
+
+    fn dependencies() -> Vec<Dependency> {
+        [Dependency::from_ty::<I>()].into_iter().flatten().collect()
+    }
+
+    fn transparent() -> bool {
+        true
+    }
+}
+
 impl_shadow!(as Vec<T>: impl<T: TS> TS for HashSet<T>);
 impl_shadow!(as Vec<T>: impl<T: TS> TS for BTreeSet<T>);
 impl_shadow!(as HashMap<K, V>: impl<K: TS, V: TS> TS for BTreeMap<K, V>);
@@ -458,6 +520,12 @@ impl_primitives! { bigdecimal::BigDecimal => "string" }
 #[cfg(feature = "uuid-impl")]
 impl_primitives! { uuid::Uuid => "string" }
 
+#[cfg(feature = "indexmap-impl")]
+impl_shadow!(as Vec<T>: impl<T: TS> TS for indexmap::IndexSet<T>);
+
+#[cfg(feature = "indexmap-impl")]
+impl_shadow!(as HashMap<K, V>: impl<K: TS, V: TS> TS for indexmap::IndexMap<K, V>);
+
 #[cfg(feature = "bytes-impl")]
 mod bytes {
     use super::TS;
@@ -470,17 +538,13 @@ impl_primitives! {
     u8, i8, u16, i16, u32, i32, f32, f64, usize, isize => "number",
     u64, i64, u128, i128 => "bigint",
     bool => "boolean",
-    String, &'static str => "string",
+    Path, PathBuf, String, &'static str => "string",
     () => "null"
 }
 
 #[cfg(feature = "serde-json-impl")]
 impl_primitives! {
     serde_json::Value => "unknown"
-}
-
-impl_primitives! {
-    std::path::Path, std::path::PathBuf => "unknown"
 }
 
 #[cfg(feature = "chrono-impl")]
@@ -570,3 +634,6 @@ mod chrono_impls {
         }
     }
 }
+
+#[rustfmt::skip]
+pub(crate) use impl_primitives;
