@@ -640,7 +640,7 @@ pub(crate) use impl_primitives;
 
 #[macro_export]
 macro_rules! export_to {
-    ($target:expr, $($types:ty),*) => {
+    ($target:expr, $($types:ty),* $(,)?) => {
         {
             let target = $target;
             fn _export(target: &mut impl ::std::io::Write) -> ::std::result::Result<(), ::std::io::Error> {
