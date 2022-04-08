@@ -22,7 +22,12 @@ impl FieldAttr {
         let mut result = Self::default();
         parse_attrs(attrs)?.for_each(|a| result.merge(a));
         #[cfg(feature = "serde-compat")]
-        crate::utils::parse_serde_attrs::<SerdeFieldAttr>(attrs).for_each(|a| result.merge(a.0));
+        {
+            for attr in crate::utils::parse_serde_attrs::<SerdeFieldAttr>(attrs) {
+                let a = attr?;
+                result.merge(a.0);
+            }
+        }
         Ok(result)
     }
 
@@ -73,6 +78,10 @@ impl_parse! {
                 input.parse::<Token![=]>()?;
                 parse_assign_str(input)?;
             }
+        },
+        // parse #[serde(alias)] to not emit a warning
+        "alias" => {
+            parse_assign_str(input)?;
         },
     }
 }

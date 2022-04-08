@@ -20,6 +20,7 @@ pub enum Inflection {
     Snake,
     Pascal,
     ScreamingSnake,
+    KebabCase,
 }
 
 impl Inflection {
@@ -33,6 +34,7 @@ impl Inflection {
             Inflection::Snake => string.to_snake_case(),
             Inflection::Pascal => string.to_pascal_case(),
             Inflection::ScreamingSnake => string.to_screaming_snake_case(),
+            Inflection::KebabCase => format!("\"{}\"", string.to_kebab_case()),
         }
     }
 }
@@ -48,6 +50,7 @@ impl TryFrom<String> for Inflection {
             "snakecase" => Self::Snake,
             "pascalcase" => Self::Pascal,
             "screamingsnakecase" => Self::ScreamingSnake,
+            "kebab-case" => Self::KebabCase,
             _ => syn_err!("invalid inflection: '{}'", value),
         })
     }

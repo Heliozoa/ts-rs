@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 
+use proc_macro2::Span;
 use syn::{Attribute, Ident, Result};
 
 use crate::{
@@ -14,6 +15,8 @@ pub struct StructAttr {
     pub export_to: Option<String>,
     pub export: bool,
     pub tag: Option<String>,
+    pub ignore_attrs: Vec<String>,
+    pub unknown: Vec<String>,
 }
 
 #[cfg(feature = "serde-compat")]
@@ -25,7 +28,20 @@ impl StructAttr {
         let mut result = Self::default();
         parse_attrs(attrs)?.for_each(|a| result.merge(a));
         #[cfg(feature = "serde-compat")]
-        crate::utils::parse_serde_attrs::<SerdeStructAttr>(attrs).for_each(|a| result.merge(a.0));
+        {
+            for attr in crate::utils::parse_serde_attrs::<SerdeStructAttr>(attrs) {
+                let a = attr?;
+                result.merge(a.0);
+            }
+        }
+        for unknown in &result.unknown {
+            if !result.ignore_attrs.contains(unknown) {
+                return Err(syn::Error::new(
+                    Span::call_site(),
+                    format!("Unknown attribute {unknown}"),
+                ));
+            }
+        }
         Ok(result)
     }
 
@@ -37,6 +53,8 @@ impl StructAttr {
             export,
             export_to,
             tag,
+            ignore_attrs: skip,
+            unknown,
         }: StructAttr,
     ) {
         self.rename = self.rename.take().or(rename);
@@ -44,6 +62,8 @@ impl StructAttr {
         self.export_to = self.export_to.take().or(export_to);
         self.export = self.export || export;
         self.tag = self.tag.take().or(tag);
+        self.ignore_attrs.extend(skip.into_iter());
+        self.unknown.extend(unknown.into_iter());
     }
 }
 
@@ -52,7 +72,8 @@ impl_parse! {
         "rename" => out.rename = Some(parse_assign_str(input)?),
         "rename_all" => out.rename_all = Some(parse_assign_str(input).and_then(Inflection::try_from)?),
         "export" => out.export = true,
-        "export_to" => out.export_to = Some(parse_assign_str(input)?)
+        "export_to" => out.export_to = Some(parse_assign_str(input)?),
+        "ignore_serde_attr" => out.ignore_attrs.push(parse_assign_str(input)?),
     }
 }
 
@@ -69,6 +90,10 @@ impl_parse! {
                 input.parse::<Token![=]>()?;
                 parse_assign_str(input)?;
             }
+        },
+        other => {
+            let _ = parse_assign_str(input); // try to parse str if any
+            out.0.unknown.push(other.to_string());
         },
     }
 }

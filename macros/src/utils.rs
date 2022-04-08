@@ -73,12 +73,12 @@ where
 #[allow(unused)]
 pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
     attrs: &'a [Attribute],
-) -> impl Iterator<Item = A> {
+) -> impl Iterator<Item = Result<A>> {
     attrs
         .iter()
         .filter(|a| a.path.is_ident("serde"))
-        .flat_map(|attr| match A::try_from(attr) {
-            Ok(attr) => Some(attr),
+        .map(|attr| match A::try_from(attr) {
+            Ok(attr) => Ok(attr),
             Err(_) => {
                 use quote::ToTokens;
                 warning::print_warning(
@@ -87,7 +87,13 @@ pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
                     "ts-rs failed to parse this attribute. It will be ignored.",
                 )
                 .unwrap();
-                None
+                Err(syn::Error::new(
+                    attr.bracket_token.span,
+                    format!(
+                        "Failed to parse attribute {}",
+                        attr.to_token_stream().to_string()
+                    ),
+                ))
             }
         })
         .collect::<Vec<_>>()
