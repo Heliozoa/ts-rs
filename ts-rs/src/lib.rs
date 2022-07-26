@@ -65,11 +65,15 @@
 //! - serde compatibility
 //! - generic types
 //!
+//! ## limitations
+//! - generic fields cannot be inlined or flattened (#56)
+//! - type aliases must not alias generic types (#70)
+//!
 //! ## cargo features
 //! - `serde-compat` (default)  
 //!
 //!   Enable serde compatibility. See below for more info.  
-//! - `format` (default)  
+//! - `format`
 //!
 //!   When enabled, the generated typescript will be formatted.
 //!   Currently, this sadly adds quite a bit of dependencies.
@@ -81,13 +85,20 @@
 //!   Implement `TS` for types from bigdecimal  
 //! - `uuid-impl`  
 //!
-//!   Implement `TS` for types from uuid  
-//! - `bytes-impl`  
+//!   Implement `TS` for types from uuid
+//! - `bson-uuid-impl`
+//!
+//!   Implement `TS` for types from bson
+//! - `bytes-impl`
 //!
 //!   Implement `TS` for types from bytes    
 //! - `indexmap-impl`  
 //!
 //!   Implement `TS` for `IndexMap` and `IndexSet` from indexmap  
+//!
+//! - `ordered-float-impl`
+//!
+//!   Implement `TS` for `OrderedFloat` from ordered_float
 //!
 //! If there's a type you're dealing with which doesn't implement `TS`, use `#[ts(type = "..")]` or open a PR.
 //!
@@ -160,7 +171,8 @@ mod export;
 ///   `cargo test`
 ///
 /// - `#[ts(export_to = "..")]`:  
-///   Specifies where the type should be exported to. Defaults to `bindings/<name>.ts`.
+///   Specifies where the type should be exported to. Defaults to `bindings/<name>.ts`.  
+///   If the provided path ends in a trailing `/`, it is interpreted as a directory.   
 ///
 /// - `#[ts(rename = "..")]`:  
 ///   Sets the typescript name of the generated type
@@ -262,6 +274,18 @@ pub trait TS: 'static {
     /// test.
     fn export() -> Result<(), ExportError> {
         export::export_type::<Self>()
+    }
+
+    /// Manually export this type to a file with a file with the specified path. This
+    /// function will ignore the `#[ts(export_to = "..)]` attribute.
+    fn export_to(path: impl AsRef<Path>) -> Result<(), ExportError> {
+        export::export_type_to::<Self, _>(path)
+    }
+
+    /// Manually generate bindings for this type, returning a [`String`].  
+    /// This function does not format the output, even if the `format` feature is enabled.
+    fn export_to_string() -> Result<String, ExportError> {
+        export::export_type_to_string::<Self>()
     }
 }
 
@@ -511,6 +535,9 @@ impl_wrapper!(impl<T: TS> TS for std::rc::Rc<T>);
 impl_wrapper!(impl<T: TS + ToOwned> TS for std::borrow::Cow<'static, T>);
 impl_wrapper!(impl<T: TS> TS for std::cell::Cell<T>);
 impl_wrapper!(impl<T: TS> TS for std::cell::RefCell<T>);
+impl_wrapper!(impl<T: TS> TS for std::sync::Mutex<T>);
+impl_wrapper!(impl<T: TS> TS for std::sync::Weak<T>);
+impl_wrapper!(impl<T: TS> TS for std::marker::PhantomData<T>);
 
 impl_tuples!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
 
@@ -519,6 +546,15 @@ impl_primitives! { bigdecimal::BigDecimal => "string" }
 
 #[cfg(feature = "uuid-impl")]
 impl_primitives! { uuid::Uuid => "string" }
+
+#[cfg(feature = "ordered-float-impl")]
+impl_primitives! { ordered_float::OrderedFloat<f32> => "number" }
+
+#[cfg(feature = "ordered-float-impl")]
+impl_primitives! { ordered_float::OrderedFloat<f64> => "number" }
+
+#[cfg(feature = "bson-uuid-impl")]
+impl_primitives! { bson::Uuid => "string" }
 
 #[cfg(feature = "indexmap-impl")]
 impl_shadow!(as Vec<T>: impl<T: TS> TS for indexmap::IndexSet<T>);
