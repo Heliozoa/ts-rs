@@ -34,7 +34,7 @@ impl Inflection {
             Inflection::Snake => string.to_snake_case(),
             Inflection::Pascal => string.to_pascal_case(),
             Inflection::ScreamingSnake => string.to_screaming_snake_case(),
-            Inflection::KebabCase => format!("\"{}\"", string.to_kebab_case()),
+            Inflection::KebabCase => string.to_kebab_case(),
         }
     }
 }

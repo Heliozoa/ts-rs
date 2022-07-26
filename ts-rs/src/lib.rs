@@ -594,7 +594,7 @@ mod chrono_impls {
     use crate::Dependency;
 
     impl_primitives! {
-        NaiveDateTime, NaiveDate, NaiveTime, Utc => "Date",
+        NaiveDateTime, NaiveDate, NaiveTime, Utc, Local, FixedOffset => "Date",
         Duration => "string"
     }
 
@@ -631,42 +631,6 @@ mod chrono_impls {
 
         fn transparent() -> bool {
             false
-        }
-    }
-
-    impl TS for Local {
-        fn name() -> String {
-            unimplemented!()
-        }
-
-        fn inline() -> String {
-            unimplemented!()
-        }
-
-        fn dependencies() -> Vec<Dependency> {
-            unimplemented!()
-        }
-
-        fn transparent() -> bool {
-            unimplemented!()
-        }
-    }
-
-    impl TS for FixedOffset {
-        fn name() -> String {
-            unimplemented!()
-        }
-
-        fn inline() -> String {
-            unimplemented!()
-        }
-
-        fn dependencies() -> Vec<Dependency> {
-            unimplemented!()
-        }
-
-        fn transparent() -> bool {
-            unimplemented!()
         }
     }
 }
