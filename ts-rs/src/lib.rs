@@ -143,7 +143,11 @@ pub use ts_rs_macros::TS;
 
 pub use crate::export::ExportError;
 
+#[cfg(feature = "chrono-impl")]
+mod chrono;
 mod export;
+#[cfg(feature = "serde-json-impl")]
+mod serde_json;
 
 /// A type which can be represented in TypeScript.  
 /// Most of the time, you'd want to derive this trait instead of implementing it manually.  
@@ -319,19 +323,18 @@ impl Dependency {
 // generate impls for primitive types
 macro_rules! impl_primitives {
     ($($($ty:ty),* => $l:literal),*) => { $($(
-        impl TS for $ty {
+        impl $crate::TS for $ty {
             fn name() -> String { $l.to_owned() }
             fn name_with_type_args(args: Vec<String>) -> String {
                 assert!(args.is_empty(), "called name_with_type_args on primitive");
                 $l.to_owned()
             }
             fn inline() -> String { $l.to_owned() }
-            fn dependencies() -> Vec<Dependency> { vec![] }
+            fn dependencies() -> Vec<$crate::Dependency> { vec![] }
             fn transparent() -> bool { false }
         }
     )*)* };
 }
-
 // generate impls for tuples
 macro_rules! impl_tuples {
     ( impl $($i:ident),* ) => {
@@ -576,63 +579,6 @@ impl_primitives! {
     bool => "boolean",
     char, Path, PathBuf, String, &'static str => "string",
     () => "null"
-}
-
-#[cfg(feature = "serde-json-impl")]
-impl_primitives! {
-    serde_json::Value => "unknown"
-}
-
-#[cfg(feature = "chrono-impl")]
-mod chrono_impls {
-    use chrono::{
-        Date, DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime,
-        TimeZone, Utc,
-    };
-
-    use super::TS;
-    use crate::Dependency;
-
-    impl_primitives! {
-        NaiveDateTime, NaiveDate, NaiveTime, Utc, Local, FixedOffset => "Date",
-        Duration => "string"
-    }
-
-    impl<T: TimeZone + 'static> TS for DateTime<T> {
-        fn name() -> String {
-            "Date".to_owned()
-        }
-
-        fn inline() -> String {
-            "Date".to_owned()
-        }
-
-        fn dependencies() -> Vec<Dependency> {
-            vec![]
-        }
-
-        fn transparent() -> bool {
-            false
-        }
-    }
-
-    impl<T: TimeZone + 'static> TS for Date<T> {
-        fn name() -> String {
-            "Date".to_owned()
-        }
-
-        fn inline() -> String {
-            "Date".to_owned()
-        }
-
-        fn dependencies() -> Vec<Dependency> {
-            vec![]
-        }
-
-        fn transparent() -> bool {
-            false
-        }
-    }
 }
 
 #[rustfmt::skip]
