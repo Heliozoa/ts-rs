@@ -179,7 +179,7 @@ mod export;
 ///
 /// - `#[ts(rename_all = "..")]`:  
 ///   Rename all fields/variants of the type.
-///   Valid values are `lowercase`, `UPPERCASE`, `camelCase`, `snake_case`, `PascalCase`, `SCREAMING_SNAKE_CASE`
+///   Valid values are `lowercase`, `UPPERCASE`, `camelCase`, `snake_case`, `PascalCase`, `SCREAMING_SNAKE_CASE`, "kebab-case"
 ///
 ///
 /// ### struct field attributes
@@ -219,7 +219,7 @@ mod export;
 ///
 /// - `#[ts(rename_all = "..")]`:  
 ///   Rename all variants of this enum.  
-///   Valid values are `lowercase`, `UPPERCASE`, `camelCase`, `snake_case`, `PascalCase`, `SCREAMING_SNAKE_CASE`
+///   Valid values are `lowercase`, `UPPERCASE`, `camelCase`, `snake_case`, `PascalCase`, `SCREAMING_SNAKE_CASE`, "kebab-case"
 ///  
 /// ### enum variant attributes
 ///
@@ -574,7 +574,7 @@ impl_primitives! {
     u8, i8, u16, i16, u32, i32, f32, f64, usize, isize => "number",
     u64, i64, u128, i128 => "bigint",
     bool => "boolean",
-    Path, PathBuf, String, &'static str => "string",
+    char, Path, PathBuf, String, &'static str => "string",
     () => "null"
 }
 

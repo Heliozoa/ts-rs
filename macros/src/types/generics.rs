@@ -1,6 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{GenericArgument, GenericParam, Generics, ItemStruct, PathArguments, Type, TypeTuple};
+use syn::{
+    GenericArgument, GenericParam, Generics, ItemStruct, PathArguments, Type, TypeGroup, TypeTuple,
+};
 
 use crate::{attr::StructAttr, deps::Dependencies};
 
@@ -108,6 +110,7 @@ pub fn format_type(ty: &Type, dependencies: &mut Dependencies, generics: &Generi
 
 fn extract_type_args(ty: &Type) -> Option<Vec<&Type>> {
     let last_segment = match ty {
+        Type::Group(TypeGroup { elem, .. }) => return extract_type_args(elem),
         Type::Path(type_path) => type_path.path.segments.last(),
         _ => None,
     }?;
