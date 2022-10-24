@@ -28,12 +28,9 @@ impl StructAttr {
         let mut result = Self::default();
         parse_attrs(attrs)?.for_each(|a| result.merge(a));
         #[cfg(feature = "serde-compat")]
-        {
-            for attr in crate::utils::parse_serde_attrs::<SerdeStructAttr>(attrs) {
-                let a = attr?;
-                result.merge(a.0);
-            }
-        }
+        crate::utils::parse_serde_attrs::<SerdeStructAttr>(attrs)?
+            .into_iter()
+            .for_each(|a| result.merge(a.0));
         for unknown in &result.unknown {
             if !result.ignore_attrs.contains(unknown) {
                 return Err(syn::Error::new(

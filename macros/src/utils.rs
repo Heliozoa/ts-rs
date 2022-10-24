@@ -92,7 +92,7 @@ where
 #[allow(unused)]
 pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
     attrs: &'a [Attribute],
-) -> impl Iterator<Item = Result<A>> {
+) -> Result<Vec<A>> {
     attrs
         .iter()
         .filter(|a| a.path.is_ident("serde"))
@@ -115,8 +115,7 @@ pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
                 ))
             }
         })
-        .collect::<Vec<_>>()
-        .into_iter()
+        .collect::<Result<Vec<_>>>()
 }
 
 #[cfg(feature = "serde-compat")]
