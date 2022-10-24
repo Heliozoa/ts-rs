@@ -153,6 +153,8 @@ mod chrono;
 mod export;
 #[cfg(feature = "serde-json-impl")]
 mod serde_json;
+#[cfg(feature = "toml-impl")]
+mod toml;
 
 /// A type which can be represented in TypeScript.  
 /// Most of the time, you'd want to derive this trait instead of implementing it manually.  
