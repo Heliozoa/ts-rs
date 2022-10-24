@@ -97,7 +97,7 @@ impl DerivedTS {
                 #inline_flattened
                 fn dependencies() -> Vec<ts_rs::Dependency>
                 where
-                    Self: 'static
+                    Self: 'static,
                 {
                     #dependencies
                 }
