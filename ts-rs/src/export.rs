@@ -27,13 +27,15 @@ pub enum ExportError {
 }
 
 /// Export `T` to the file specified by the `#[ts(export_to = ..)]` attribute
-pub(crate) fn export_type<T: TS + ?Sized>() -> Result<(), ExportError> {
+pub(crate) fn export_type<T: TS + 'static + ?Sized>() -> Result<(), ExportError> {
     let path = output_path::<T>()?;
     export_type_to::<T, _>(&path)
 }
 
 /// Export `T` to the file specified by the `path` argument.
-pub(crate) fn export_type_to<T: TS + ?Sized, P: AsRef<Path>>(path: P) -> Result<(), ExportError> {
+pub(crate) fn export_type_to<T: TS + 'static + ?Sized, P: AsRef<Path>>(
+    path: P,
+) -> Result<(), ExportError> {
     #[allow(unused_mut)]
     let mut buffer = export_type_to_string::<T>()?;
 
@@ -55,7 +57,7 @@ pub(crate) fn export_type_to<T: TS + ?Sized, P: AsRef<Path>>(path: P) -> Result<
 }
 
 /// Returns the generated defintion for `T`.
-pub(crate) fn export_type_to_string<T: TS + ?Sized>() -> Result<String, ExportError> {
+pub(crate) fn export_type_to_string<T: TS + 'static + ?Sized>() -> Result<String, ExportError> {
     let mut buffer = String::with_capacity(1024);
     buffer.push_str(NOTE);
     generate_imports::<T>(&mut buffer)?;
@@ -78,7 +80,7 @@ fn generate_decl<T: TS + ?Sized>(out: &mut String) {
 }
 
 /// Push an import statement for all dependencies of `T`
-fn generate_imports<T: TS + ?Sized>(out: &mut String) -> Result<(), ExportError> {
+fn generate_imports<T: TS + 'static + ?Sized>(out: &mut String) -> Result<(), ExportError> {
     let path = Path::new(T::EXPORT_TO.ok_or(ExportError::CannotBeExported)?);
 
     let deps = T::dependencies();
