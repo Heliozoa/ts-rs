@@ -102,15 +102,17 @@ fn format_variant(
                 } else {
                     format_type(&unnamed.unnamed[0].ty, dependencies, generics)
                 };
-                quote!(format!("{{ {}: \"{}\", {}: {} }}", #tag, #name, #content, #ty))
+                quote!(format!("{{ \"{}\": \"{}\", \"{}\": {} }}", #tag, #name, #content, #ty))
             }
-            Fields::Unit => quote!(format!("{{ {}: \"{}\" }}", #tag, #name)),
-            _ => quote!(format!("{{ {}: \"{}\", {}: {} }}", #tag, #name, #content, #inline_type)),
+            Fields::Unit => quote!(format!("{{ \"{}\": \"{}\" }}", #tag, #name)),
+            _ => quote!(
+                format!("{{ \"{}\": \"{}\", \"{}\": {} }}", #tag, #name, #content, #inline_type)
+            ),
         },
         Tagged::Internally { tag } => match variant_type.inline_flattened {
             Some(inline_flattened) => quote! {
                 format!(
-                    "{{ {}: \"{}\", {} }}",
+                    "{{ \"{}\": \"{}\", {} }}",
                     #tag,
                     #name,
                     #inline_flattened
@@ -125,11 +127,11 @@ fn format_variant(
                     } else {
                         format_type(&unnamed.unnamed[0].ty, dependencies, generics)
                     };
-                    quote!(format!("{{ {}: \"{}\" }} & {}", #tag, #name, #ty))
+                    quote!(format!("{{ \"{}\": \"{}\" }} & {}", #tag, #name, #ty))
                 }
-                Fields::Unit => quote!(format!("{{ {}: \"{}\" }}", #tag, #name)),
+                Fields::Unit => quote!(format!("{{ \"{}\": \"{}\" }}", #tag, #name)),
                 _ => {
-                    quote!(format!("{{ {}: \"{}\" }} & {}", #tag, #name, #inline_type))
+                    quote!(format!("{{ \"{}\": \"{}\" }} & {}", #tag, #name, #inline_type))
                 }
             },
         },
