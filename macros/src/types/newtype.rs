@@ -40,14 +40,14 @@ pub(crate) fn newtype(
 
     let inner_ty = &inner.ty;
     let mut dependencies = Dependencies::default();
-    match (inline, &type_override) {
+    match (inline || attr.transparent, &type_override) {
         (_, Some(_)) => (),
         (true, _) => dependencies.append_from(inner_ty),
         (false, _) => dependencies.push_or_append_from(inner_ty),
     };
     let inline_def = match &type_override {
         Some(o) => quote!(#o.to_owned()),
-        None if inline => quote!(<#inner_ty as ts_rs::TS>::inline()),
+        None if inline || attr.transparent => quote!(<#inner_ty as ts_rs::TS>::inline()),
         None => format_type(inner_ty, &mut dependencies, generics),
     };
 

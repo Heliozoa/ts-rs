@@ -16,6 +16,7 @@ pub struct StructAttr {
     pub export: bool,
     pub tag: Option<String>,
     pub ignore_attrs: Vec<String>,
+    pub transparent: bool,
     pub unknown: Vec<String>,
 }
 
@@ -51,6 +52,7 @@ impl StructAttr {
             export_to,
             tag,
             ignore_attrs: skip,
+            transparent,
             unknown,
         }: StructAttr,
     ) {
@@ -60,6 +62,7 @@ impl StructAttr {
         self.export = self.export || export;
         self.tag = self.tag.take().or(tag);
         self.ignore_attrs.extend(skip.into_iter());
+        self.transparent = self.transparent || transparent;
         self.unknown.extend(unknown.into_iter());
     }
 }
@@ -99,6 +102,7 @@ impl_parse! {
                 parse_assign_str(input)?;
             }
         },
+        "transparent" => out.0.transparent = true,
         other => {
             let _ = parse_assign_str(input); // try to parse str if any
             out.0.unknown.push(other.to_string());
