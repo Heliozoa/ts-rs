@@ -1,8 +1,6 @@
 #![cfg(feature = "chrono-impl")]
 
-use chrono::{
-    Date, DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc,
-};
+use chrono::{DateTime, Duration, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use ts_rs::TS;
 
 #[test]
@@ -10,7 +8,7 @@ fn chrono() {
     #[derive(TS)]
     #[allow(dead_code)]
     struct Chrono {
-        date: (NaiveDate, Date<Utc>, Date<Local>, Date<FixedOffset>),
+        date: NaiveDate,
         time: NaiveTime,
         date_time: (
             NaiveDateTime,
@@ -23,6 +21,6 @@ fn chrono() {
 
     assert_eq!(
         Chrono::decl(),
-        "interface Chrono { date: [Date, Date, Date, Date], time: string, date_time: [string, Date, Date, Date], duration: string, }"
+        "interface Chrono { date: string, time: string, date_time: [string, Date, Date, Date], duration: string, }"
     )
 }
