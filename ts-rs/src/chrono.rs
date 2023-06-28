@@ -7,7 +7,8 @@ use super::TS;
 use crate::Dependency;
 
 crate::impl_primitives! {
-    NaiveDateTime, NaiveDate, NaiveTime, Utc, Local, FixedOffset => "Date",
+    NaiveDateTime, NaiveDate, NaiveTime => "string",
+    Utc, Local, FixedOffset => "Date",
     Duration => "string"
 }
 
