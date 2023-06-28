@@ -81,7 +81,7 @@ where
 {
     Ok(attrs
         .iter()
-        .filter(|a| a.path.is_ident("ts"))
+        .filter(|a| a.meta.path().is_ident("ts"))
         .map(A::try_from)
         .collect::<Result<Vec<A>>>()?
         .into_iter())
@@ -95,7 +95,7 @@ pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
 ) -> Result<Vec<A>> {
     attrs
         .iter()
-        .filter(|a| a.path.is_ident("serde"))
+        .filter(|a| a.meta.path().is_ident("serde"))
         .map(|attr| match A::try_from(attr) {
             Ok(attr) => Ok(attr),
             Err(_) => {
@@ -107,7 +107,7 @@ pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
                 )
                 .unwrap();
                 Err(syn::Error::new(
-                    attr.bracket_token.span,
+                    attr.bracket_token.span.open(),
                     format!(
                         "Failed to parse attribute {}",
                         attr.to_token_stream().to_string()

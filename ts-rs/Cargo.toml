@@ -36,7 +36,7 @@ chrono = { version = "0.4", features = ["serde"] }
 
 [dependencies]
 ts-rs-macros = { version = "6.2.0", path = "../macros" }
-dprint-plugin-typescript = { version = "0.83", optional = true }
+dprint-plugin-typescript = { version = "0.85", optional = true }
 chrono = { version = "0.4.19", optional = true }
 serde_json = { version = "1.0.82", optional = true }
 toml = { version = "0.7.2", optional = true }

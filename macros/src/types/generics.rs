@@ -91,7 +91,7 @@ pub fn format_type(ty: &Type, dependencies: &mut Dependencies, generics: &Generi
             .path
             .segments
             .first()
-            .map(|f| f.ident.to_string().contains("Date"))
+            .map(|f| f.ident.to_string().starts_with("DateTime"))
             .unwrap_or_default()
         {
             return quote!(String::from("Date"));
