@@ -2,7 +2,6 @@
 
 use std::time::Instant;
 
-use serde::Serialize;
 use ts_rs::TS;
 
 struct Unsupported<T>(T);
@@ -41,8 +40,11 @@ fn newtype() {
 }
 
 #[test]
+#[cfg(feature = "serde-compat")]
 fn enum_newtype_representations() {
     // regression test for https://github.com/Aleph-Alpha/ts-rs/issues/126
+
+    use serde::Serialize;
 
     #[derive(Serialize)]
     struct S;
@@ -58,4 +60,7 @@ fn enum_newtype_representations() {
     enum Adjacent {
         Newtype(#[ts(type = "unknown")] S),
     }
+
+    assert_eq!(Internal::inline(), r#"{ "t": "Newtype" } & unknown"#);
+    assert_eq!(Adjacent::inline(), r#"{ "t": "Newtype", "c": unknown }"#);
 }
