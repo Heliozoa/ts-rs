@@ -83,6 +83,9 @@
 //! - `bigdecimal-impl`  
 //!
 //!   Implement `TS` for types from bigdecimal  
+//! - `url-impl`  
+//!
+//!   Implement `TS` for types from url
 //! - `uuid-impl`  
 //!
 //!   Implement `TS` for types from uuid
@@ -184,6 +187,7 @@ mod toml;
 /// - `#[ts(export_to = "..")]`:  
 ///   Specifies where the type should be exported to. Defaults to `bindings/<name>.ts`.  
 ///   If the provided path ends in a trailing `/`, it is interpreted as a directory.   
+///   Note that you need to add the `export` attribute as well, in order to generate a test which exports the type.
 ///
 /// - `#[ts(rename = "..")]`:  
 ///   Sets the typescript name of the generated type
@@ -358,10 +362,10 @@ macro_rules! impl_tuples {
     ( impl $($i:ident),* ) => {
         impl<$($i: TS),*> TS for ($($i,)*) {
             fn name() -> String {
-                format!("[{}]", vec![$($i::name()),*].join(", "))
+                format!("[{}]", [$($i::name()),*].join(", "))
             }
             fn inline() -> String {
-                format!("[{}]", vec![ $($i::inline()),* ].join(", "))
+                format!("[{}]", [$($i::inline()),*].join(", "))
             }
             fn dependencies() -> Vec<Dependency>
             where
@@ -597,6 +601,9 @@ impl_primitives! { bigdecimal::BigDecimal => "string" }
 #[cfg(feature = "uuid-impl")]
 impl_primitives! { uuid::Uuid => "string" }
 
+#[cfg(feature = "url-impl")]
+impl_primitives! { url::Url => "string" }
+
 #[cfg(feature = "ordered-float-impl")]
 impl_primitives! { ordered_float::OrderedFloat<f32> => "number" }
 
@@ -611,6 +618,9 @@ impl_shadow!(as Vec<T>: impl<T: TS> TS for indexmap::IndexSet<T>);
 
 #[cfg(feature = "indexmap-impl")]
 impl_shadow!(as HashMap<K, V>: impl<K: TS, V: TS> TS for indexmap::IndexMap<K, V>);
+
+#[cfg(feature = "heapless-impl")]
+impl_shadow!(as Vec<T>: impl<T: TS, const N: usize> TS for heapless::Vec<T, N>);
 
 #[cfg(feature = "bytes-impl")]
 mod bytes {

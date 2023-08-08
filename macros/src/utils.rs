@@ -81,7 +81,7 @@ where
 {
     Ok(attrs
         .iter()
-        .filter(|a| a.meta.path().is_ident("ts"))
+        .filter(|a| a.path().is_ident("ts"))
         .map(A::try_from)
         .collect::<Result<Vec<A>>>()?
         .into_iter())
@@ -95,9 +95,9 @@ pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
 ) -> Result<Vec<A>> {
     attrs
         .iter()
-        .filter(|a| a.meta.path().is_ident("serde"))
-        .map(|attr| match A::try_from(attr) {
-            Ok(attr) => Ok(attr),
+        .filter(|a| a.path().is_ident("serde"))
+        .flat_map(|attr| match A::try_from(attr) {
+            Ok(attr) => Some(attr),
             Err(_) => {
                 use quote::ToTokens;
                 warning::print_warning(
