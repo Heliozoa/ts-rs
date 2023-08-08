@@ -2,7 +2,7 @@
 #![cfg(feature = "chrono-impl")]
 
 use chrono::{
-    Date, DateTime, Duration, FixedOffset, Local, Month, NaiveDate, NaiveDateTime, NaiveTime, Utc,
+    DateTime, Duration, FixedOffset, Local, Month, NaiveDate, NaiveDateTime, NaiveTime, Utc,
     Weekday,
 };
 use ts_rs::TS;
@@ -27,6 +27,6 @@ fn chrono() {
 
     assert_eq!(
         Chrono::decl(),
-        "interface Chrono { date: [string, string, string, string], time: string, date_time: [string, string, string, string], duration: string, month: string, weekday: string, }"
+        "interface Chrono { date: string, time: string, date_time: [string, Date, Date, Date], duration: string, month: string, weekday: string, }"
     )
 }

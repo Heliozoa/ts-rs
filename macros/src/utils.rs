@@ -96,8 +96,8 @@ pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
     attrs
         .iter()
         .filter(|a| a.path().is_ident("serde"))
-        .flat_map(|attr| match A::try_from(attr) {
-            Ok(attr) => Some(attr),
+        .map(|attr| match A::try_from(attr) {
+            Ok(attr) => Ok(attr),
             Err(_) => {
                 use quote::ToTokens;
                 warning::print_warning(
