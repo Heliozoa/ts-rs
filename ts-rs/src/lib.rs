@@ -104,7 +104,7 @@
 //!   Implement `TS` for `OrderedFloat` from ordered_float
 //!
 //! - `heapless-impl`  
-//! 
+//!
 //!   Implement `TS` for `Vec` from heapless
 //!
 //!
@@ -639,9 +639,7 @@ impl_primitives! {
     u8, i8, NonZeroU8, NonZeroI8,
     u16, i16, NonZeroU16, NonZeroI16,
     u32, i32, NonZeroU32, NonZeroI32,
-    usize, isize, NonZeroUsize, NonZeroIsize, f32, f64 => "number",
-    u64, i64, NonZeroU64, NonZeroI64,
-    u128, i128, NonZeroU128, NonZeroI128 => "bigint",
+    usize, isize, NonZeroUsize, NonZeroIsize, f32, f64, u64, i64, NonZeroU64, NonZeroI64, u128, i128, NonZeroU128, NonZeroI128 => "number",
     bool => "boolean",
     char, Path, PathBuf, String, str,
     Ipv4Addr, Ipv6Addr, IpAddr, SocketAddrV4, SocketAddrV6, SocketAddr => "string",
