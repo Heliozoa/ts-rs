@@ -40,7 +40,7 @@
 //! ## get started
 //! ```toml
 //! [dependencies]
-//! ts-rs = "7.0"
+//! ts-rs = "7.1"
 //! ```
 //!
 //! ```rust
@@ -107,6 +107,11 @@
 //!
 //!   Implement `TS` for `Vec` from heapless
 //!
+//! - `no-serde-warnings`
+//!
+//!   When `serde-compat` is enabled, warnings are printed during build if unsupported serde
+//!   attributes are encountered. Enabling this feature silences these warnings.
+//!
 //!
 //! If there's a type you're dealing with which doesn't implement `TS`, use `#[ts(type = "..")]` or open a PR.
 //!
@@ -125,7 +130,7 @@
 //! - `flatten`
 //! - `default`
 //!
-//! When ts-rs encounters an unsupported serde attribute, a warning is emitted.
+//! When ts-rs encounters an unsupported serde attribute, a warning is emitted, unless the feature `no-serde-warnings` is enabled.
 //!
 //! ## contributing
 //! Contributions are always welcome!
@@ -463,6 +468,27 @@ impl<T: TS> TS for Option<T> {
     }
 }
 
+impl<T: TS, E: TS> TS for Result<T, E> {
+    fn name() -> String {
+        unreachable!();
+    }
+    fn inline() -> String {
+        format!("{{ Ok : {} }} | {{ Err : {} }}", T::inline(), E::inline())
+    }
+    fn dependencies() -> Vec<Dependency>
+    where
+        Self: 'static,
+    {
+        [Dependency::from_ty::<T>(), Dependency::from_ty::<E>()]
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+    fn transparent() -> bool {
+        true
+    }
+}
+
 impl<T: TS> TS for Vec<T> {
     fn name() -> String {
         "Array".to_owned()
@@ -587,6 +613,7 @@ impl_shadow!(as Vec<T>: impl<T: TS> TS for HashSet<T>);
 impl_shadow!(as Vec<T>: impl<T: TS> TS for BTreeSet<T>);
 impl_shadow!(as HashMap<K, V>: impl<K: TS, V: TS> TS for BTreeMap<K, V>);
 impl_shadow!(as Vec<T>: impl<T: TS, const N: usize> TS for [T; N]);
+impl_shadow!(as Vec<T>: impl<T: TS> TS for [T]);
 
 impl_wrapper!(impl<T: TS + ?Sized> TS for Box<T>);
 impl_wrapper!(impl<T: TS + ?Sized> TS for std::sync::Arc<T>);
@@ -639,6 +666,7 @@ impl_primitives! {
     u8, i8, NonZeroU8, NonZeroI8,
     u16, i16, NonZeroU16, NonZeroI16,
     u32, i32, NonZeroU32, NonZeroI32,
+    // bigints don't work well with JSON, so we use "number" here even though it's not correct
     usize, isize, NonZeroUsize, NonZeroIsize, f32, f64, u64, i64, NonZeroU64, NonZeroI64, u128, i128, NonZeroU128, NonZeroI128 => "number",
     bool => "boolean",
     char, Path, PathBuf, String, str,
