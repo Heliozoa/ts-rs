@@ -101,7 +101,7 @@ pub fn format_type(ty: &Type, dependencies: &mut Dependencies, generics: &Generi
             .map(|f| f.ident.to_string().starts_with("DateTime"))
             .unwrap_or_default()
         {
-            return quote!(String::from("Date"));
+            return quote!(String::from("string"));
         }
     }
 

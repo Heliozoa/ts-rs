@@ -11,16 +11,16 @@ use crate::Dependency;
 
 crate::impl_primitives! {
     NaiveDateTime, NaiveDate, NaiveTime, Month, Weekday, Duration => "string",
-    Utc, Local, FixedOffset => "Date"
+    Utc, Local, FixedOffset => "string"
 }
 
 impl<T: TimeZone + 'static> TS for DateTime<T> {
     fn name() -> String {
-        "Date".to_owned()
+        "string".to_owned()
     }
 
     fn inline() -> String {
-        "Date".to_owned()
+        "string".to_owned()
     }
 
     fn dependencies() -> Vec<Dependency> {
