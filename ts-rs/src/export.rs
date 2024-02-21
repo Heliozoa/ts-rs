@@ -3,8 +3,7 @@ use std::{
     collections::BTreeMap,
     fmt::Write,
     path::{Component, Path, PathBuf},
-    sync::Mutex,
-    sync::OnceLock,
+    sync::{Mutex, OnceLock},
 };
 
 use thiserror::Error;
@@ -136,7 +135,9 @@ pub mod __private {
     const EXPORT_DIR_ENV_VAR: &str = "TS_RS_EXPORT_DIR";
     fn provided_default_dir() -> Option<&'static str> {
         static EXPORT_TO: OnceLock<Option<String>> = OnceLock::new();
-        EXPORT_TO.get_or_init(|| std::env::var(EXPORT_DIR_ENV_VAR).ok()).as_deref()
+        EXPORT_TO
+            .get_or_init(|| std::env::var(EXPORT_DIR_ENV_VAR).ok())
+            .as_deref()
     }
 
     /// Returns the path to where `T` should be exported using the `TS_RS_EXPORT_DIR` environment variable.
@@ -281,4 +282,3 @@ where
         Some(comps.iter().map(|c| c.as_os_str()).collect())
     }
 }
-

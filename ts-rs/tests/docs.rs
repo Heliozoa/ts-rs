@@ -374,9 +374,6 @@ fn export_g() {
             " */\n",
             "variant_field: number, } })",
         )
-
-
-
     };
 
     let actual_content = fs::read_to_string("tests-out/docs/G.ts").unwrap();

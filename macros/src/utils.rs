@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
-use quote::ToTokens;
 use proc_macro2::Ident;
+use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, Error, Expr, ExprLit, Lit, Meta, Result};
 
 macro_rules! syn_err {
@@ -140,7 +140,7 @@ pub fn parse_docs(attrs: &[Attribute]) -> Result<String> {
         .map(|attr| {
             attr.map(|line| match line.trim() {
                 "" => " *".to_owned(),
-                _ => format!(" *{}", line.trim_end())
+                _ => format!(" *{}", line.trim_end()),
             })
         })
         .collect::<Result<Vec<_>>>()?;

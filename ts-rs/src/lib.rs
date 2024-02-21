@@ -133,6 +133,9 @@
 //! - `content`
 //! - `untagged`
 //! - `skip`
+//! - `skip_serializing`
+//! - `skip_deserializing`
+//! - `skip_serializing_if = "Option::is_none"`
 //! - `flatten`
 //! - `default`
 //!
@@ -169,11 +172,10 @@ use std::{
 pub use ts_rs_macros::TS;
 
 pub use crate::export::ExportError;
-use crate::typelist::TypeList;
-
 // Used in generated code. Not public API
 #[doc(hidden)]
 pub use crate::export::__private;
+use crate::typelist::TypeList;
 
 #[cfg(feature = "chrono-impl")]
 mod chrono;

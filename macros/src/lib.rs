@@ -81,9 +81,7 @@ impl DerivedTS {
 
         let docs = match docs.is_empty() {
             true => None,
-            false => {
-                Some(quote!(const DOCS: Option<&'static str> = Some(#docs);))
-            }
+            false => Some(quote!(const DOCS: Option<&'static str> = Some(#docs);)),
         };
 
         let inline_flattened = inline_flattened

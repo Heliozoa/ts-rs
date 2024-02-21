@@ -114,5 +114,11 @@ impl_parse! {
         "alias" => {
             parse_assign_str(input)?;
         },
+        "skip_serializing" => out.0.skip = true,
+        "skip_deserializing" => out.0.skip = true,
+        "skip_serializing_if" => {
+            let optional = parse_assign_str(input)? == *"Option::is_none";
+            out.0.optional = Optional { optional, nullable: optional };
+        }
     }
 }
