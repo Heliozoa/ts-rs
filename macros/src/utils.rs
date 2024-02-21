@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 
+use quote::ToTokens;
 use proc_macro2::Ident;
 use syn::{spanned::Spanned, Attribute, Error, Expr, ExprLit, Lit, Meta, Result};
 
