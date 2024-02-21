@@ -27,6 +27,6 @@ fn chrono() {
 
     assert_eq!(
         Chrono::decl(),
-        "interface Chrono { date: string, time: string, date_time: [string, Date, Date, Date], duration: string, month: string, weekday: string, }"
+        "type Chrono = { date: [string, string, string, string], time: string, date_time: [string, string, string, string], duration: string, month: string, weekday: string, }"
     )
 }

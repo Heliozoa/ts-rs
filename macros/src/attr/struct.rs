@@ -5,7 +5,7 @@ use syn::{Attribute, Ident, Result};
 
 use crate::{
     attr::{parse_assign_str, Inflection, VariantAttr},
-    utils::parse_attrs,
+    utils::{parse_attrs, parse_docs},
 };
 
 #[derive(Default, Clone)]
@@ -18,6 +18,7 @@ pub struct StructAttr {
     pub ignore_attrs: Vec<String>,
     pub transparent: bool,
     pub unknown: Vec<String>,
+    pub docs: String,
 }
 
 #[cfg(feature = "serde-compat")]
@@ -28,6 +29,10 @@ impl StructAttr {
     pub fn from_attrs(attrs: &[Attribute]) -> Result<Self> {
         let mut result = Self::default();
         parse_attrs(attrs)?.for_each(|a| result.merge(a));
+
+        let docs = parse_docs(attrs)?;
+        result.docs = docs;
+
         #[cfg(feature = "serde-compat")]
         crate::utils::parse_serde_attrs::<SerdeStructAttr>(attrs)?
             .into_iter()
@@ -54,6 +59,7 @@ impl StructAttr {
             ignore_attrs: skip,
             transparent,
             unknown,
+            docs,
         }: StructAttr,
     ) {
         self.rename = self.rename.take().or(rename);
@@ -64,6 +70,7 @@ impl StructAttr {
         self.ignore_attrs.extend(skip.into_iter());
         self.transparent = self.transparent || transparent;
         self.unknown.extend(unknown.into_iter());
+        self.docs = docs;
     }
 }
 

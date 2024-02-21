@@ -18,6 +18,7 @@ mod types;
 
 struct DerivedTS {
     name: String,
+    docs: String,
     inline: TokenStream,
     decl: TokenStream,
     inline_flattened: Option<TokenStream>,
@@ -47,12 +48,18 @@ impl DerivedTS {
     }
 
     fn into_impl(self, rust_ty: Ident, generics: Generics) -> TokenStream {
+        let mut get_export_to = quote! {};
         let export_to = match &self.export_to {
             Some(dirname) if dirname.ends_with('/') => {
                 format!("{}{}.ts", dirname, self.name)
             }
             Some(filename) => filename.clone(),
             None => {
+                get_export_to = quote! {
+                    fn get_export_to() -> Option<String> {
+                        ts_rs::__private::get_export_to_path::<Self>()
+                    }
+                };
                 format!("bindings/{}.ts", self.name)
             }
         };
@@ -64,12 +71,21 @@ impl DerivedTS {
 
         let DerivedTS {
             name,
+            docs,
             inline,
             decl,
             inline_flattened,
             dependencies,
             ..
         } = self;
+
+        let docs = match docs.is_empty() {
+            true => None,
+            false => {
+                Some(quote!(const DOCS: Option<&'static str> = Some(#docs);))
+            }
+        };
+
         let inline_flattened = inline_flattened
             .map(|t| {
                 quote! {
@@ -84,6 +100,9 @@ impl DerivedTS {
         quote! {
             #impl_start {
                 const EXPORT_TO: Option<&'static str> = Some(#export_to);
+                #get_export_to
+
+                #docs
 
                 fn decl() -> String {
                     #decl
@@ -95,12 +114,15 @@ impl DerivedTS {
                     #inline
                 }
                 #inline_flattened
-                fn dependencies() -> Vec<ts_rs::Dependency>
+
+                #[allow(clippy::unused_unit)]
+                fn dependency_types() -> impl ts_rs::typelist::TypeList
                 where
                     Self: 'static,
                 {
                     #dependencies
                 }
+
                 fn transparent() -> bool {
                     false
                 }

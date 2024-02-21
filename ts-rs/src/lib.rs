@@ -9,7 +9,7 @@
 //!
 //! <div align="center">
 //! <!-- Github Actions -->
-//! <img src="https://img.shields.io/github/workflow/status/Aleph-Alpha/ts-rs/Test?style=flat-square" alt="actions status" />
+//! <img src="https://img.shields.io/github/actions/workflow/status/Aleph-Alpha/ts-rs/test.yml?branch=main" alt="actions status" />
 //! <a href="https://crates.io/crates/ts-rs">
 //! <img src="https://img.shields.io/crates/v/ts-rs.svg?style=flat-square"
 //! alt="Crates.io version" />
@@ -64,6 +64,7 @@
 //! - generate necessary imports when exporting to multiple files
 //! - serde compatibility
 //! - generic types
+//! - support for ESM imports
 //!
 //! ## limitations
 //! - generic fields cannot be inlined or flattened (#56)
@@ -107,11 +108,18 @@
 //!
 //!   Implement `TS` for `Vec` from heapless
 //!
+//! - `semver-impl`  
+//!   Implement `TS` for `Version` from semver
+//!
 //! - `no-serde-warnings`
 //!
 //!   When `serde-compat` is enabled, warnings are printed during build if unsupported serde
 //!   attributes are encountered. Enabling this feature silences these warnings.
 //!
+//! - `import-esm`
+//!
+//!   `import` statements in the generated file will have the `.js` extension in the end of
+//!   the path to conform to the ES Modules spec. (e.g.: `import { MyStruct } from "./my_struct.js"`)
 //!
 //! If there's a type you're dealing with which doesn't implement `TS`, use `#[ts(type = "..")]` or open a PR.
 //!
@@ -120,15 +128,16 @@
 //! Supported serde attributes:
 //! - `rename`
 //! - `rename-all`
+//! - `rename-all-fields`
 //! - `tag`
 //! - `content`
 //! - `untagged`
 //! - `skip`
-//! - `skip_serializing`
-//! - `skip_deserializing`
-//! - `skip_serializing_if = "Option::is_none"`
 //! - `flatten`
 //! - `default`
+//!
+//! Note: `skip_serializing` and `skip_deserializing` are ignored. If you wish to exclude a field
+//! from the generated type, but cannot use `#[serde(skip)]`, use `#[ts(skip)]` instead.
 //!
 //! When ts-rs encounters an unsupported serde attribute, a warning is emitted, unless the feature `no-serde-warnings` is enabled.
 //!
@@ -143,7 +152,7 @@
 //! - [x] use typescript types across files
 //! - [x] more enum representations
 //! - [x] generics
-//! - [ ] don't require `'static`
+//! - [x] don't require `'static`
 
 use std::{
     any::TypeId,
@@ -160,6 +169,11 @@ use std::{
 pub use ts_rs_macros::TS;
 
 pub use crate::export::ExportError;
+use crate::typelist::TypeList;
+
+// Used in generated code. Not public API
+#[doc(hidden)]
+pub use crate::export::__private;
 
 #[cfg(feature = "chrono-impl")]
 mod chrono;
@@ -168,6 +182,7 @@ mod export;
 mod serde_json;
 #[cfg(feature = "toml-impl")]
 mod toml;
+pub mod typelist;
 
 /// A type which can be represented in TypeScript.  
 /// Most of the time, you'd want to derive this trait instead of implementing it manually.  
@@ -192,10 +207,18 @@ mod toml;
 ///
 /// - `#[ts(export)]`:  
 ///   Generates a test which will export the type, by default to `bindings/<name>.ts` when running
-///   `cargo test`
+///   `cargo test`. The default base directory can be overridden with the `TS_RS_EXPORT_DIR` environment variable.
+///   Adding the variable to a project's [config.toml](https://doc.rust-lang.org/cargo/reference/config.html#env) can
+///   make it easier to manage.
+/// ```toml
+/// # <project-root>/.cargo/config.toml
+/// [env]
+/// TS_RS_EXPORT_DIR = { value = "<OVERRIDE_DIR>", relative = true }
+/// ```
 ///
 /// - `#[ts(export_to = "..")]`:  
 ///   Specifies where the type should be exported to. Defaults to `bindings/<name>.ts`.  
+///   The `export_to` attribute will also override the `TS_RS_EXPORT_DIR` environment variable.  
 ///   If the provided path ends in a trailing `/`, it is interpreted as a directory.   
 ///   Note that you need to add the `export` attribute as well, in order to generate a test which exports the type.
 ///
@@ -223,10 +246,13 @@ mod toml;
 ///   Skip this field  
 ///
 /// - `#[ts(optional)]`:  
-///   Indicates the field may be omitted from the serialized struct
+///   May be applied on a struct field of type `Option<T>`.
+///   By default, such a field would turn into `t: T | null`.
+///   If `#[ts(optional)]` is present, `t?: T` is generated instead.
+///   If `#[ts(optional = nullable)]` is present, `t?: T | null` is generated.
 ///
 /// - `#[ts(flatten)]`:  
-///   Flatten this field (only works if the field is a struct)  
+///   Flatten this field
 ///   
 /// ### enum attributes
 ///
@@ -245,6 +271,10 @@ mod toml;
 /// - `#[ts(rename_all = "..")]`:  
 ///   Rename all variants of this enum.  
 ///   Valid values are `lowercase`, `UPPERCASE`, `camelCase`, `snake_case`, `PascalCase`, `SCREAMING_SNAKE_CASE`, "kebab-case"
+///
+/// - `#[ts(rename_all_fieds = "..")]`
+///   Renames the fields of all the struct variants of this enum.
+///   Valid values are `lowercase`, `UPPERCASE`, `camelCase`, `snake_case`, `PascalCase`, `SCREAMING_SNAKE_CASE`, "kebab-case"
 ///  
 /// ### enum variant attributes
 ///
@@ -255,6 +285,11 @@ mod toml;
 ///   Skip this variant  
 pub trait TS {
     const EXPORT_TO: Option<&'static str> = None;
+    const DOCS: Option<&'static str> = None;
+
+    fn get_export_to() -> Option<String> {
+        Self::EXPORT_TO.map(ToString::to_string)
+    }
 
     /// Declaration of this type, e.g. `interface User { user_id: number, ... }`.
     /// This function will panic if the type has no declaration.
@@ -282,13 +317,33 @@ pub trait TS {
         panic!("{} cannot be flattened", Self::name())
     }
 
-    /// Information about types this type depends on.
-    /// This is used for resolving imports when exporting to a file.
+    fn dependency_types() -> impl TypeList
+    where
+        Self: 'static,
+    {
+    }
+
     fn dependencies() -> Vec<Dependency>
     where
-        Self: 'static;
+        Self: 'static,
+    {
+        use crate::typelist::TypeVisitor;
 
-    /// `true` if this is a transparent type, e.g tuples or a list.  
+        let mut deps: Vec<Dependency> = vec![];
+        struct Visit<'a>(&'a mut Vec<Dependency>);
+        impl<'a> TypeVisitor for Visit<'a> {
+            fn visit<T: TS + 'static + ?Sized>(&mut self) {
+                if let Some(dep) = Dependency::from_ty::<T>() {
+                    self.0.push(dep);
+                }
+            }
+        }
+        Self::dependency_types().for_each(&mut Visit(&mut deps));
+
+        deps
+    }
+
+    /// `true` if this is a transparent type, e.g tuples or a list.
     /// This is used for resolving imports when using the `export!` macro.
     fn transparent() -> bool;
 
@@ -303,7 +358,7 @@ pub trait TS {
     where
         Self: 'static,
     {
-        export::export_type::<Self>()
+        export::export_type_with_dependencies::<Self>()
     }
 
     /// Manually export this type to a file with a file with the specified path. This
@@ -335,7 +390,7 @@ pub struct Dependency {
     pub ts_name: String,
     /// Path to where the type would be exported. By default a filename is derived from the types
     /// name, which can be customized with `#[ts(export_to = "..")]`.
-    pub exported_to: &'static str,
+    pub exported_to: String,
 }
 
 impl Dependency {
@@ -343,7 +398,7 @@ impl Dependency {
     /// If `T` is not exportable (meaning `T::EXPORT_TO` is `None`), this function will return
     /// `None`
     pub fn from_ty<T: TS + 'static + ?Sized>() -> Option<Self> {
-        let exported_to = T::EXPORT_TO?;
+        let exported_to = T::get_export_to()?;
         Some(Dependency {
             type_id: TypeId::of::<T>(),
             ts_name: T::name(),
@@ -362,7 +417,6 @@ macro_rules! impl_primitives {
                 $l.to_owned()
             }
             fn inline() -> String { $l.to_owned() }
-            fn dependencies() -> Vec<$crate::Dependency> { vec![] }
             fn transparent() -> bool { false }
         }
     )*)* };
@@ -377,14 +431,11 @@ macro_rules! impl_tuples {
             fn inline() -> String {
                 format!("[{}]", [$($i::inline()),*].join(", "))
             }
-            fn dependencies() -> Vec<Dependency>
+            fn dependency_types() -> impl TypeList
             where
                 Self: 'static
             {
-                [$( Dependency::from_ty::<$i>() ),*]
-                .into_iter()
-                .flatten()
-                .collect()
+                ()$(.push::<$i>())*
             }
             fn transparent() -> bool { true }
         }
@@ -407,11 +458,11 @@ macro_rules! impl_wrapper {
             }
             fn inline() -> String { T::inline() }
             fn inline_flattened() -> String { T::inline_flattened() }
-            fn dependencies() -> Vec<Dependency>
+            fn dependency_types() -> impl TypeList
             where
                 Self: 'static
             {
-                T::dependencies()
+                T::dependency_types()
             }
             fn transparent() -> bool { T::transparent() }
         }
@@ -426,11 +477,11 @@ macro_rules! impl_shadow {
             fn name_with_type_args(args: Vec<String>) -> String { <$s>::name_with_type_args(args) }
             fn inline() -> String { <$s>::inline() }
             fn inline_flattened() -> String { <$s>::inline_flattened() }
-            fn dependencies() -> Vec<$crate::Dependency>
+            fn dependency_types() -> impl $crate::typelist::TypeList
             where
                 Self: 'static
             {
-                <$s>::dependencies()
+                <$s>::dependency_types()
             }
             fn transparent() -> bool { <$s>::transparent() }
         }
@@ -456,11 +507,11 @@ impl<T: TS> TS for Option<T> {
         format!("{} | null", T::inline())
     }
 
-    fn dependencies() -> Vec<Dependency>
+    fn dependency_types() -> impl TypeList
     where
         Self: 'static,
     {
-        [Dependency::from_ty::<T>()].into_iter().flatten().collect()
+        ().push::<T>()
     }
 
     fn transparent() -> bool {
@@ -475,14 +526,11 @@ impl<T: TS, E: TS> TS for Result<T, E> {
     fn inline() -> String {
         format!("{{ Ok : {} }} | {{ Err : {} }}", T::inline(), E::inline())
     }
-    fn dependencies() -> Vec<Dependency>
+    fn dependency_types() -> impl TypeList
     where
         Self: 'static,
     {
-        [Dependency::from_ty::<T>(), Dependency::from_ty::<E>()]
-            .into_iter()
-            .flatten()
-            .collect()
+        ().push::<T>().push::<E>()
     }
     fn transparent() -> bool {
         true
@@ -494,25 +542,69 @@ impl<T: TS> TS for Vec<T> {
         "Array".to_owned()
     }
 
-    fn name_with_type_args(args: Vec<String>) -> String {
-        assert_eq!(
-            args.len(),
-            1,
-            "called Vec::name_with_type_args with {} args",
-            args.len()
-        );
-        format!("Array<{}>", args[0])
-    }
-
     fn inline() -> String {
         format!("Array<{}>", T::inline())
     }
 
-    fn dependencies() -> Vec<Dependency>
+    fn dependency_types() -> impl TypeList
     where
         Self: 'static,
     {
-        [Dependency::from_ty::<T>()].into_iter().flatten().collect()
+        ().push::<T>()
+    }
+    fn transparent() -> bool {
+        true
+    }
+}
+
+// Arrays longer than this limit will be emitted as Array<T>
+const ARRAY_TUPLE_LIMIT: usize = 64;
+impl<T: TS, const N: usize> TS for [T; N] {
+    fn name() -> String {
+        if N > ARRAY_TUPLE_LIMIT {
+            return Vec::<T>::name();
+        }
+
+        "[]".to_owned()
+    }
+
+    fn name_with_type_args(args: Vec<String>) -> String {
+        if N > ARRAY_TUPLE_LIMIT {
+            return Vec::<T>::name_with_type_args(args);
+        }
+
+        assert_eq!(
+            args.len(),
+            1,
+            "called [T; N]::name_with_type_args with {} args",
+            args.len()
+        );
+
+        format!(
+            "[{}]",
+            (0..N)
+                .map(|_| args[0].clone())
+                .collect::<Box<[_]>>()
+                .join(", ")
+        )
+    }
+
+    fn inline() -> String {
+        if N > ARRAY_TUPLE_LIMIT {
+            return Vec::<T>::inline();
+        }
+
+        format!(
+            "[{}]",
+            (0..N).map(|_| T::inline()).collect::<Box<[_]>>().join(", ")
+        )
+    }
+
+    fn dependency_types() -> impl TypeList
+    where
+        Self: 'static,
+    {
+        ().push::<T>()
     }
 
     fn transparent() -> bool {
@@ -520,7 +612,7 @@ impl<T: TS> TS for Vec<T> {
     }
 }
 
-impl<K: TS, V: TS> TS for HashMap<K, V> {
+impl<K: TS, V: TS, H> TS for HashMap<K, V, H> {
     fn name() -> String {
         "Record".to_owned()
     }
@@ -539,14 +631,11 @@ impl<K: TS, V: TS> TS for HashMap<K, V> {
         format!("Record<{}, {}>", K::inline(), V::inline())
     }
 
-    fn dependencies() -> Vec<Dependency>
+    fn dependency_types() -> impl TypeList
     where
         Self: 'static,
     {
-        [Dependency::from_ty::<K>(), Dependency::from_ty::<V>()]
-            .into_iter()
-            .flatten()
-            .collect()
+        ().push::<K>().push::<V>()
     }
 
     fn transparent() -> bool {
@@ -569,11 +658,11 @@ impl<I: TS> TS for Range<I> {
         format!("{{ start: {}, end: {}, }}", &args[0], &args[0])
     }
 
-    fn dependencies() -> Vec<Dependency>
+    fn dependency_types() -> impl TypeList
     where
         Self: 'static,
     {
-        [Dependency::from_ty::<I>()].into_iter().flatten().collect()
+        ().push::<I>()
     }
 
     fn transparent() -> bool {
@@ -596,11 +685,11 @@ impl<I: TS> TS for RangeInclusive<I> {
         format!("{{ start: {}, end: {}, }}", &args[0], &args[0])
     }
 
-    fn dependencies() -> Vec<Dependency>
+    fn dependency_types() -> impl TypeList
     where
         Self: 'static,
     {
-        [Dependency::from_ty::<I>()].into_iter().flatten().collect()
+        ().push::<I>()
     }
 
     fn transparent() -> bool {
@@ -608,11 +697,10 @@ impl<I: TS> TS for RangeInclusive<I> {
     }
 }
 
-impl_shadow!(as T: impl<'a, T: TS + ?Sized> TS for &T);
-impl_shadow!(as Vec<T>: impl<T: TS> TS for HashSet<T>);
+impl_shadow!(as T: impl<T: TS + ?Sized> TS for &T);
+impl_shadow!(as Vec<T>: impl<T: TS, H> TS for HashSet<T, H>);
 impl_shadow!(as Vec<T>: impl<T: TS> TS for BTreeSet<T>);
 impl_shadow!(as HashMap<K, V>: impl<K: TS, V: TS> TS for BTreeMap<K, V>);
-impl_shadow!(as Vec<T>: impl<T: TS, const N: usize> TS for [T; N]);
 impl_shadow!(as Vec<T>: impl<T: TS> TS for [T]);
 
 impl_wrapper!(impl<T: TS + ?Sized> TS for Box<T>);
@@ -653,6 +741,9 @@ impl_shadow!(as HashMap<K, V>: impl<K: TS, V: TS> TS for indexmap::IndexMap<K, V
 
 #[cfg(feature = "heapless-impl")]
 impl_shadow!(as Vec<T>: impl<T: TS, const N: usize> TS for heapless::Vec<T, N>);
+
+#[cfg(feature = "semver-impl")]
+impl_primitives! { semver::Version => "string" }
 
 #[cfg(feature = "bytes-impl")]
 mod bytes {

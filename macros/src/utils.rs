@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use proc_macro2::Ident;
-use syn::{Attribute, Error, Result};
+use syn::{spanned::Spanned, Attribute, Error, Expr, ExprLit, Lit, Meta, Result};
 
 macro_rules! syn_err {
     ($l:literal $(, $a:expr)*) => {
@@ -99,10 +99,10 @@ pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
         .map(|attr| match A::try_from(attr) {
             Ok(attr) => Ok(attr),
             Err(_) => {
-                #[cfg(not(feature = "quiet-serde"))]
+                #[cfg(not(feature = "no-serde-warnings"))]
                 use quote::ToTokens;
 
-                #[cfg(not(feature = "quiet-serde"))]
+                #[cfg(not(feature = "no-serde-warnings"))]
                 warning::print_warning(
                     "failed to parse serde attribute",
                     format!("{}", attr.to_token_stream()),
@@ -119,6 +119,35 @@ pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
             }
         })
         .collect::<Result<Vec<_>>>()
+}
+
+/// Return doc comments parsed and formatted as JSDoc.
+pub fn parse_docs(attrs: &[Attribute]) -> Result<String> {
+    let lines = attrs
+        .iter()
+        .filter_map(|a| match a.meta {
+            Meta::NameValue(ref x) if x.path.is_ident("doc") => Some(x),
+            _ => None,
+        })
+        .map(|attr| match attr.value {
+            Expr::Lit(ExprLit {
+                lit: Lit::Str(ref str),
+                ..
+            }) => Ok(str.value()),
+            _ => syn_err!(attr.span(); "doc attribute with non literal expression found"),
+        })
+        .map(|attr| {
+            attr.map(|line| match line.trim() {
+                "" => " *".to_owned(),
+                _ => format!(" *{}", line.trim_end())
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    Ok(match lines.is_empty() {
+        true => "".to_owned(),
+        false => format!("/**\n{}\n */\n", lines.join("\n")),
+    })
 }
 
 #[cfg(feature = "serde-compat")]

@@ -1,6 +1,57 @@
 on: [push, pull_request]
 name: Test
 jobs:
+  e2e-dependencies:
+    name: Run 'dependencies' end-to-end test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: dependencies e2e test
+        working-directory: e2e/dependencies/consumer
+        run: |
+          cargo t 
+          tsc bindings/* --noEmit
+      - name: dependencies e2e test with default export env
+        working-directory: e2e/dependencies/consumer
+        run: |
+          TS_RS_EXPORT_DIR=custom-bindings cargo t 
+          tsc custom-bindings/* --noEmit
+  e2e-workspace:
+    name: Run 'workspace' end-to-end test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: workspace e2e test
+        working-directory: e2e/workspace
+        run: |
+          cargo t 
+          tsc parent/bindings/* --noEmit
+      - name: workspace e2e with default export env
+        working-directory: e2e/workspace
+        run: |
+          TS_RS_EXPORT_DIR=custom-bindings cargo t 
+          tsc parent/custom-bindings/* --noEmit
+
+  readme-up-to-date:
+    name: Check that README.md is up-to-date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Check that README.md is up-to-date
+        working-directory: ts-rs
+        run: |
+          cargo install cargo-readme 
+          diff -u ../README.md <(cargo readme)
+
   test:
     name: Test ts-rs
     runs-on: ubuntu-latest
