@@ -105,3 +105,27 @@ struct ComplexStruct {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub string_tree: Option<Rc<BTreeSet<String>>>,
 }
+
+#[derive(Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+struct Nullable {
+    #[serde(default)]
+    pub string_tree: Option<Rc<BTreeSet<String>>>,
+}
+
+#[cfg(test)]
+mod test {
+    use ts_rs::TS;
+    use super::*;
+
+    #[test]
+    fn skipped_option_not_nullable() {
+        assert_eq!(<ComplexStruct as TS>::inline(), "{ stringTree?: Array<string>, }");
+    }
+
+    #[test]
+    fn not_skipped_option_nullable() {
+        assert_eq!(<Nullable as TS>::inline(), "{ stringTree: Array<string> | null, }");
+    }
+}

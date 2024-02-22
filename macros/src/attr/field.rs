@@ -117,8 +117,10 @@ impl_parse! {
         "skip_serializing" => out.0.skip = true,
         "skip_deserializing" => out.0.skip = true,
         "skip_serializing_if" => {
-            let optional = parse_assign_str(input)? == *"Option::is_none";
-            out.0.optional = Optional { optional, nullable: optional };
+            // here, we check specifically for the Option::is_none check so we can mark
+            // the field as not nullable (field?: type instead of field?: type | null)
+            let not_nullable = parse_assign_str(input)? == *"Option::is_none";
+            out.0.optional = Optional { optional: true, nullable: !not_nullable };
         }
     }
 }

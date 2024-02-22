@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 
 use proc_macro2::Ident;
+#[cfg(feature = "serde-compat")]
 use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, Error, Expr, ExprLit, Lit, Meta, Result};
 
@@ -100,9 +101,6 @@ pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
         .map(|attr| match A::try_from(attr) {
             Ok(attr) => Ok(attr),
             Err(_) => {
-                #[cfg(not(feature = "no-serde-warnings"))]
-                use quote::ToTokens;
-
                 #[cfg(not(feature = "no-serde-warnings"))]
                 warning::print_warning(
                     "failed to parse serde attribute",
