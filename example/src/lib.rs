@@ -114,6 +114,14 @@ struct Nullable {
     pub string_tree: Option<Rc<BTreeSet<String>>>,
 }
 
+#[derive(Serialize, TS)]
+struct Doc {
+    /// doc
+    a: String,
+    /// doc
+    b: String,
+}
+
 #[cfg(test)]
 mod test {
     use ts_rs::TS;
@@ -127,5 +135,10 @@ mod test {
     #[test]
     fn not_skipped_option_nullable() {
         assert_eq!(<Nullable as TS>::inline(), "{ stringTree: Array<string> | null, }");
+    }
+
+    #[test]
+    fn no_whitespace_with_doc() {
+        assert_eq!(<Doc as TS>::inline(), "{ \n/**\n * doc\n */\na: string,\n/**\n * doc\n */\nb: string, }");
     }
 }

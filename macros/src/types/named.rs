@@ -37,7 +37,7 @@ pub(crate) fn named(
         )?;
     }
 
-    let fields = quote!(<[String]>::join(&[#(#formatted_fields),*], " "));
+    let fields = quote!(<[String]>::join(&[#(#formatted_fields),*], ""));
     let flattened = quote!(<[String]>::join(&[#(#flattened_fields),*], " & "));
     let generic_args = format_generics(&mut dependencies, generics);
 
@@ -152,7 +152,11 @@ fn format_field(
 
     // Start every doc string with a newline, because when other characters are in front, it is not "understood" by VSCode
     let docs = match docs.is_empty() {
-        true => "".to_string(),
+        true => if !formatted_fields.is_empty() {
+            " ".to_string()
+        } else {
+            "".to_string()
+        },
         false => format!("\n{}", &docs),
     };
 
