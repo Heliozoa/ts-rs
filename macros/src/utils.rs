@@ -110,10 +110,7 @@ pub fn parse_serde_attrs<'a, A: TryFrom<&'a Attribute, Error = Error>>(
                 .unwrap();
                 Err(syn::Error::new(
                     attr.bracket_token.span.open(),
-                    format!(
-                        "Failed to parse attribute {}",
-                        attr.to_token_stream().to_string()
-                    ),
+                    format!("Failed to parse attribute {}", attr.to_token_stream()),
                 ))
             }
         })
@@ -180,14 +177,14 @@ mod warning {
         buffer.set_color(&yellow_bold)?;
         write!(&mut buffer, "warning")?;
         buffer.set_color(&white_bold)?;
-        writeln!(&mut buffer, ": {}", title)?;
+        writeln!(&mut buffer, ": {title}")?;
 
         buffer.set_color(&blue)?;
         writeln!(&mut buffer, "  | ")?;
 
         write!(&mut buffer, "  | ")?;
         buffer.set_color(&white)?;
-        writeln!(&mut buffer, "{}", content)?;
+        writeln!(&mut buffer, "{content}")?;
 
         buffer.set_color(&blue)?;
         writeln!(&mut buffer, "  | ")?;
@@ -196,7 +193,7 @@ mod warning {
         buffer.set_color(&white_bold)?;
         write!(&mut buffer, "note: ")?;
         buffer.set_color(&white)?;
-        writeln!(&mut buffer, "{}", note)?;
+        writeln!(&mut buffer, "{note}")?;
 
         writer.print(&buffer)
     }

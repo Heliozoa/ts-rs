@@ -125,20 +125,30 @@ struct Doc {
 #[cfg(test)]
 mod test {
     use ts_rs::TS;
+
     use super::*;
 
     #[test]
     fn skipped_option_not_nullable() {
-        assert_eq!(<ComplexStruct as TS>::inline(), "{ stringTree?: Array<string>, }");
+        assert_eq!(
+            <ComplexStruct as TS>::inline(),
+            "{ stringTree?: Array<string>, }"
+        );
     }
 
     #[test]
     fn not_skipped_option_nullable() {
-        assert_eq!(<Nullable as TS>::inline(), "{ stringTree: Array<string> | null, }");
+        assert_eq!(
+            <Nullable as TS>::inline(),
+            "{ stringTree: Array<string> | null, }"
+        );
     }
 
     #[test]
     fn no_whitespace_with_doc() {
-        assert_eq!(<Doc as TS>::inline(), "{ \n/**\n * doc\n */\na: string,\n/**\n * doc\n */\nb: string, }");
+        assert_eq!(
+            <Doc as TS>::inline(),
+            "{ \n/**\n * doc\n */\na: string,\n/**\n * doc\n */\nb: string, }"
+        );
     }
 }

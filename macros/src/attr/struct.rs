@@ -67,9 +67,9 @@ impl StructAttr {
         self.export_to = self.export_to.take().or(export_to);
         self.export = self.export || export;
         self.tag = self.tag.take().or(tag);
-        self.ignore_attrs.extend(skip.into_iter());
+        self.ignore_attrs.extend(skip);
         self.transparent = self.transparent || transparent;
-        self.unknown.extend(unknown.into_iter());
+        self.unknown.extend(unknown);
         self.docs = docs;
     }
 }

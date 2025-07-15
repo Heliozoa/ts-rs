@@ -220,7 +220,7 @@ fn import_path(from: &Path, import: &Path) -> String {
     let path_without_extension = path.trim_end_matches(".ts");
 
     if cfg!(feature = "import-esm") {
-        format!("{}.js", path_without_extension)
+        format!("{path_without_extension}.js")
     } else {
         path_without_extension.to_owned()
     }

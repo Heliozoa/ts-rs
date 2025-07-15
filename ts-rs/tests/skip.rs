@@ -1,6 +1,7 @@
 #![allow(dead_code, unused_imports)]
 
 use std::error::Error;
+
 use serde::Serialize;
 use ts_rs::TS;
 

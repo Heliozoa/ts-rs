@@ -20,7 +20,7 @@ pub(crate) fn named(
     let mut flattened_fields = Vec::new();
     let mut dependencies = Dependencies::default();
     if let Some(tag) = &attr.tag {
-        let formatted = format!("{}: \"{}\",", tag, name);
+        let formatted = format!("{tag}: \"{name}\",");
         formatted_fields.push(quote! {
             #formatted.to_string()
         });
@@ -152,11 +152,13 @@ fn format_field(
 
     // Start every doc string with a newline, because when other characters are in front, it is not "understood" by VSCode
     let docs = match docs.is_empty() {
-        true => if !formatted_fields.is_empty() {
-            " ".to_string()
-        } else {
-            "".to_string()
-        },
+        true => {
+            if !formatted_fields.is_empty() {
+                " ".to_string()
+            } else {
+                "".to_string()
+            }
+        }
         false => format!("\n{}", &docs),
     };
 
